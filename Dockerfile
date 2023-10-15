@@ -3,7 +3,7 @@ RUN apk --update add ca-certificates tzdata
 WORKDIR /app
 COPY . ./
 RUN go mod download
-RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" cmd/main.go
+RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" cmd/server/main.go
 
 FROM scratch
 ENV TZ=Europe/Berlin

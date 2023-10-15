@@ -91,86 +91,68 @@ cat <<EOF > bin/phalanx.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: phalanx
+  name: phalanx-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pod-reader
+  name: phalanx-cluster-role
 rules:
-- apiGroups: [""]
-  resources: ["services","secrets"]
-  verbs: ["get", "watch", "list"]
-- apiGroups: ["extensions","networking.k8s.io"]
-  resources: ["ingresses",]
-  verbs: ["get", "watch", "list"]
+  - apiGroups: [""]
+    resources: ["services","secrets","endpoints"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions","networking.k8s.io"]
+    resources: ["ingresses",]
+    verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pod-reader-binding
+  name: phalanx-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pod-reader
+  name: phalanx-cluster-role
 subjects:
-- kind: ServiceAccount
-  name: phalanx
-  namespace: default
+  - kind: ServiceAccount
+    name: phalanx-sa
+    namespace: default
 ---
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
+  name: phalanx
+  namespace: default
   labels:
     app: phalanx
-  name: phalanx
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: phalanx
-  strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: phalanx
     spec:
-      serviceAccountName: phalanx
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: phalanx-sa
       containers:
-      - image: docker.io/phalanx:${TAG}
-        name: phalanx
-        ports:
-        - containerPort: 443
-          name: https
-          protocol: TCP
-        - containerPort: 80
-          name: http
-          protocol: TCP
-        resources: {}
----
-apiVersion: v1
-kind: Service
-metadata:
-  creationTimestamp: null
-  labels:
-    app: phalanx
-  name: phalanx
-spec:
-  type: NodePort
-  ports:
-  - port: 443
-    name: https
-    protocol: TCP
-    targetPort: 443
-  - port: 80
-    name: http
-    protocol: TCP
-    targetPort: 80
-  selector:
-    app: phalanx
-status:
-  loadBalancer: {}
+        - image: docker.io/phalanx:1.0.0-dev
+          name: phalanx
+          imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "81"
+            - name: TLS_PORT
+              value: "444"
+            - name: HOST
+              value: "0.0.0.0"
+          ports:
+            - name: http
+              containerPort: 81
+            - name: https
+              containerPort: 444
 EOF
 
 kubectl delete -f bin/phalanx.yaml --ignore-not-found=true
