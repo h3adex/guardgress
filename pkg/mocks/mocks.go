@@ -14,7 +14,6 @@ import (
 )
 
 func IngressMock() *v1.IngressList {
-	// pathTypeImplementationSpecific := v1.PathTypeImplementationSpecific
 	pathTypeExact := v1.PathTypeExact
 	pathTypePrefix := v1.PathTypePrefix
 
