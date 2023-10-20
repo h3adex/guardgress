@@ -2,7 +2,7 @@ FROM golang:1.21-alpine as builder
 RUN apk --update add ca-certificates tzdata
 WORKDIR /app
 COPY . ./
-RUN go mod download
+RUN go get -v -t -d ./...
 RUN go build cmd/server/main.go
 
 FROM scratch
