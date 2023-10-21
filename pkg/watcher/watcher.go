@@ -69,8 +69,8 @@ func (w *Watcher) onChange() {
 	w.UpdateServer(payload)
 }
 
-func (w *Watcher) Run(ctx context.Context) {
-	log.Println("starting watcher")
+func (w *Watcher) Run(ctx context.Context) error {
+	log.Println("Starting Watcher")
 	factory := informers.NewSharedInformerFactory(w.Client, time.Minute)
 	debounced := debounce.New(time.Second)
 	handler := cache.ResourceEventHandlerFuncs{
@@ -124,4 +124,6 @@ func (w *Watcher) Run(ctx context.Context) {
 		serviceInformer.Run(ctx.Done())
 		wg.Done()
 	}()
+
+	return nil
 }

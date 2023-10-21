@@ -7,7 +7,7 @@ import (
 	"github.com/h3adex/phalanx/internal/crypto/tls"
 	"github.com/h3adex/phalanx/internal/net/http"
 	"github.com/h3adex/phalanx/pkg/mocks"
-	"github.com/h3adex/phalanx/pkg/watcher"
+	"github.com/h3adex/phalanx/pkg/router"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
@@ -33,12 +33,10 @@ func TestReverseProxy(t *testing.T) {
 		TlsPort: 10102,
 	})
 
-	srv.RoutingTable.New(
-		watcher.Payload{
-			Ingresses:       mocks.IngressMock(),
-			TlsCertificates: mocks.TlsCertificatesMock(),
-		},
-	)
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses:       mocks.IngressMock(),
+		TlsCertificates: mocks.TlsCertificatesMock(),
+	}
 
 	go func() {
 		srv.Run(ctx)

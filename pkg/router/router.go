@@ -15,11 +15,6 @@ type RoutingTable struct {
 	TlsCertificates map[string]*tls.Certificate
 }
 
-func (r *RoutingTable) New(payload watcher.Payload) {
-	r.Ingresses = payload.Ingresses
-	r.TlsCertificates = payload.TlsCertificates
-}
-
 func (r *RoutingTable) Update(payload watcher.Payload) {
 	r.Ingresses = payload.Ingresses
 	r.TlsCertificates = payload.TlsCertificates
@@ -75,6 +70,8 @@ func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
+	/* used for development
+	/* return r.TlsCertificates["localhost"], nil*/
 	cert, ok := r.TlsCertificates[sni]
 	if !ok {
 		return nil, fmt.Errorf("no certificate found for sni %s", sni)

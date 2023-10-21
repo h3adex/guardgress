@@ -15,20 +15,20 @@ import (
 )
 
 type Config struct {
-	Host    string `env:"HOST"`
+	Host    string `env:"HOST" envDefault:"0.0.0.0"`
 	Port    int    `env:"PORT" envDefault:"80"`
 	TlsPort int    `env:"TLS_PORT" envDefault:"443"`
 }
 
 type Server struct {
 	Config       *Config
-	RoutingTable router.RoutingTable
+	RoutingTable *router.RoutingTable
 }
 
 func New(config *Config) *Server {
 	s := &Server{
 		Config:       config,
-		RoutingTable: router.RoutingTable{},
+		RoutingTable: &router.RoutingTable{},
 	}
 	return s
 }
@@ -42,7 +42,7 @@ func (s Server) Run(ctx context.Context) {
 			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
 			Handler: s,
 		}
-		log.Println("Listening HTTP on ", srv.Addr)
+		log.Println("Starting HTTP-Server on ", srv.Addr)
 		err := srv.ListenAndServe()
 		if err != nil {
 			panic(err)
@@ -60,7 +60,7 @@ func (s Server) Run(ctx context.Context) {
 				return s.RoutingTable.GetTlsCertificate(hello.ServerName)
 			},
 		}
-		log.Println("Listening HTTPS on ", srv.Addr)
+		log.Println("Starting HTTPS-Server on ", srv.Addr)
 		err := srv.ListenAndServeTLS("", "")
 		if err != nil {
 			panic(err)
