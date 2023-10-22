@@ -88,7 +88,8 @@ func (s Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
 	}
 
 	if annotations.AddJa3Header(parsedAnnotations) {
-		request.Header.Add("X-Ja3-Fingerprint", ja3Digest)
+		request.Header.Add("X-Ja3-Fingerprint", request.JA3)
+		request.Header.Add("X-Ja3-Fingerprint-Hash", ja3Digest)
 	}
 
 	p := httputil.NewSingleHostReverseProxy(svcUrl)
