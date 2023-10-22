@@ -54,6 +54,8 @@ func (s Server) Run(ctx context.Context) {
 		srv := http.Server{
 			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
 			Handler: s,
+			// disable HTTP/2
+			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
 		}
 		srv.TLSConfig = &tls.Config{
 			GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {

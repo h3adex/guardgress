@@ -70,8 +70,8 @@ func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
-	/* used for development
-	/* return r.TlsCertificates["localhost"], nil*/
+	/* used for development */
+	/*return r.TlsCertificates["localhost"], nil*/
 	cert, ok := r.TlsCertificates[sni]
 	if !ok {
 		return nil, fmt.Errorf("no certificate found for sni %s", sni)
