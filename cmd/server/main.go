@@ -30,9 +30,6 @@ func main() {
 	}
 	srv := server.New(config)
 
-	// Monkey patch that hoe
-	/*srv.RoutingTable.GetTlsCertificate()*/
-
 	w := watcher.New(k8sClient, func(routingTable watcher.Payload) {
 		srv.UpdateRoutingTable(routingTable)
 	})
