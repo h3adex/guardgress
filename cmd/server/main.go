@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"github.com/caarlos0/env"
-	"github.com/h3adex/phalanx/pkg/server"
-	"github.com/h3adex/phalanx/pkg/watcher"
+	"github.com/h3adex/guardgress/pkg/server"
+	"github.com/h3adex/guardgress/pkg/watcher"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"

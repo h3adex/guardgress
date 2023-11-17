@@ -8,7 +8,7 @@ package httptrace
 
 import (
 	"context"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
 	"net"
 	"net/textproto"
 	"reflect"

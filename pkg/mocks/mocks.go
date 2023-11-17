@@ -5,7 +5,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
@@ -36,8 +36,8 @@ func IngressMock() *v1.IngressList {
 					DeletionGracePeriodSeconds: nil,
 					Labels:                     nil,
 					Annotations: map[string]string{
-						"phalanx/add-ja3-header": "true",
-						"phalanx/tls-blacklist":  "d41d8cd98f00b204e9800998ecf8427a",
+						"guardgress/add-ja3-header": "true",
+						"guardgress/tls-blacklist":  "d41d8cd98f00b204e9800998ecf8427a",
 					},
 					OwnerReferences: nil,
 					Finalizers:      nil,
@@ -49,7 +49,7 @@ func IngressMock() *v1.IngressList {
 					TLS:              nil,
 					Rules: []v1.IngressRule{
 						{
-							Host: "www.phalanx.com",
+							Host: "www.guardgress.com",
 							IngressRuleValue: v1.IngressRuleValue{
 								HTTP: &v1.HTTPIngressRuleValue{
 									Paths: []v1.HTTPIngressPath{
@@ -84,7 +84,7 @@ func IngressMock() *v1.IngressList {
 					TLS:              nil,
 					Rules: []v1.IngressRule{
 						{
-							Host: "www.phalanx.com",
+							Host: "www.guardgress.com",
 							IngressRuleValue: v1.IngressRuleValue{
 								HTTP: &v1.HTTPIngressRuleValue{
 									Paths: []v1.HTTPIngressPath{
@@ -119,7 +119,7 @@ func IngressMock() *v1.IngressList {
 					TLS:              nil,
 					Rules: []v1.IngressRule{
 						{
-							Host: "example.phalanx.com",
+							Host: "example.guardgress.com",
 							IngressRuleValue: v1.IngressRuleValue{
 								HTTP: &v1.HTTPIngressRuleValue{
 									Paths: []v1.HTTPIngressPath{
@@ -154,7 +154,7 @@ func IngressMock() *v1.IngressList {
 					TLS:              nil,
 					Rules: []v1.IngressRule{
 						{
-							Host: "example2.phalanx.com",
+							Host: "example2.guardgress.com",
 							IngressRuleValue: v1.IngressRuleValue{
 								HTTP: &v1.HTTPIngressRuleValue{
 									Paths: []v1.HTTPIngressPath{
@@ -229,7 +229,7 @@ func TlsCertificatesMock() map[string]*tls.Certificate {
 		log.Println("unable to provide self signed cert")
 
 		return map[string]*tls.Certificate{
-			"www.phalanx.com": {
+			"www.guardgress.com": {
 				Certificate: nil,
 				PrivateKey:  nil,
 			},
@@ -237,7 +237,7 @@ func TlsCertificatesMock() map[string]*tls.Certificate {
 	}
 
 	return map[string]*tls.Certificate{
-		"www.phalanx.com": {
+		"www.guardgress.com": {
 			Certificate: nil,
 			PrivateKey:  nil,
 		},

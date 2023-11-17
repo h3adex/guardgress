@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: phalanx-sa
+  name: guardgress-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: phalanx-cluster-role
+  name: guardgress-cluster-role
 rules:
   - apiGroups: [""]
     resources: ["services","secrets","endpoints"]
@@ -18,38 +18,38 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: phalanx-role-binding
+  name: guardgress-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: phalanx-cluster-role
+  name: guardgress-cluster-role
 subjects:
   - kind: ServiceAccount
-    name: phalanx-sa
+    name: guardgress-sa
     namespace: default
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: phalanx
+  name: guardgress
   namespace: default
   labels:
-    app: phalanx
+    app: guardgress
 spec:
   selector:
     matchLabels:
-      app: phalanx
+      app: guardgress
   template:
     metadata:
       labels:
-        app: phalanx
+        app: guardgress
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      serviceAccountName: phalanx-sa
+      serviceAccountName: guardgress-sa
       containers:
-        - image: docker.io/phalanx:1.0.0-dev
-          name: phalanx
+        - image: docker.io/guardgress:1.0.0-dev
+          name: guardgress
           imagePullPolicy: Never
           env:
             - name: PORT

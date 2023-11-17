@@ -2,8 +2,8 @@ package router
 
 import (
 	"fmt"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
-	"github.com/h3adex/phalanx/pkg/watcher"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
+	"github.com/h3adex/guardgress/pkg/watcher"
 	v1 "k8s.io/api/networking/v1"
 	"net/url"
 	"regexp"
@@ -13,6 +13,7 @@ import (
 type RoutingTable struct {
 	Ingresses       *v1.IngressList
 	TlsCertificates map[string]*tls.Certificate
+	DevMode         bool
 }
 
 func (r *RoutingTable) Update(payload watcher.Payload) {
@@ -71,7 +72,11 @@ func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
 	/* used for development */
-	/*return r.TlsCertificates["localhost"], nil*/
+	fmt.Println(r.TlsCertificates)
+	if r.DevMode {
+		return r.TlsCertificates["localhost"], nil
+	}
+
 	cert, ok := r.TlsCertificates[sni]
 	if !ok {
 		return nil, fmt.Errorf("no certificate found for sni %s", sni)

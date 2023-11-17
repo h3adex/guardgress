@@ -7,7 +7,7 @@
 package httputil
 
 import (
-	"github.com/h3adex/phalanx/internal/net/http/internal"
+	"github.com/h3adex/guardgress/internal/net/http/internal"
 	"io"
 )
 

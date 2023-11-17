@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
-	"github.com/h3adex/phalanx/internal/net/http"
-	"github.com/h3adex/phalanx/pkg/mocks"
-	"github.com/h3adex/phalanx/pkg/router"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/net/http"
+	"github.com/h3adex/guardgress/pkg/mocks"
+	"github.com/h3adex/guardgress/pkg/router"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
@@ -47,7 +47,7 @@ func TestReverseProxy(t *testing.T) {
 	// check if reverse proxy works for http request
 	req, err := http.NewRequest("GET", "http://127.0.0.1:10101", nil)
 	assert.NoError(t, err)
-	req.Host = "www.phalanx.com"
+	req.Host = "www.guardgress.com"
 
 	res, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
@@ -61,7 +61,7 @@ func TestReverseProxy(t *testing.T) {
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err = http.NewRequest("GET", "https://127.0.0.1:10102", nil)
 	assert.NoError(t, err)
-	req.Host = "www.phalanx.com"
+	req.Host = "www.guardgress.com"
 
 	res, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)

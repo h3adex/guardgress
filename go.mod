@@ -1,4 +1,4 @@
-module github.com/h3adex/phalanx
+module github.com/h3adex/guardgress
 
 go 1.21
 

@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"io"
 	"math/rand"
 	"net/url"

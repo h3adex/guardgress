@@ -8,8 +8,8 @@ package httptest
 import (
 	"bufio"
 	"bytes"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
-	"github.com/h3adex/phalanx/internal/net/http"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/net/http"
 	"io"
 	"strings"
 )

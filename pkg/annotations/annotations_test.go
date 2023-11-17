@@ -1,7 +1,7 @@
 package annotations
 
 import (
-	"github.com/h3adex/phalanx/pkg/mocks"
+	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"
 )

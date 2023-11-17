@@ -3,7 +3,7 @@ package watcher
 import (
 	"context"
 	"github.com/bep/debounce"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
 	"k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"

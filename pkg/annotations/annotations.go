@@ -5,7 +5,7 @@ import (
 )
 
 func IsJa3Blacklisted(annotations map[string]string, requestJa3 string) bool {
-	tlsBlacklist, ok := annotations["phalanx/tls-blacklist"]
+	tlsBlacklist, ok := annotations["guardgress/tls-blacklist"]
 	if ok {
 		for _, tlsHash := range strings.Split(tlsBlacklist, ",") {
 			if tlsHash == requestJa3 {
@@ -18,7 +18,7 @@ func IsJa3Blacklisted(annotations map[string]string, requestJa3 string) bool {
 }
 
 func AddJa3Header(annotations map[string]string) bool {
-	addJa3Header, ok := annotations["phalanx/add-ja3-header"]
+	addJa3Header, ok := annotations["guardgress/add-ja3-header"]
 	if ok && addJa3Header == "true" {
 		return true
 	}

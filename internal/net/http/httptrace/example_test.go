@@ -6,7 +6,7 @@ package httptrace_test
 
 import (
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"log"
 	"net/http/httptrace"
 )

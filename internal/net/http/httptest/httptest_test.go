@@ -5,8 +5,8 @@
 package httptest
 
 import (
-	"github.com/h3adex/phalanx/internal/crypto/tls"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"io"
 	"net/url"
 	"reflect"

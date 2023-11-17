@@ -9,8 +9,8 @@ package httputil
 import (
 	"context"
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
-	"github.com/h3adex/phalanx/internal/net/http/internal/ascii"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
+	"github.com/h3adex/guardgress/internal/net/http/internal/ascii"
 	"io"
 	"log"
 	"net"

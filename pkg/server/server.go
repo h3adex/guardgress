@@ -3,13 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
-	"github.com/h3adex/phalanx/internal/net/http"
-	"github.com/h3adex/phalanx/internal/net/http/httputil"
-	"github.com/h3adex/phalanx/pkg/annotations"
-	"github.com/h3adex/phalanx/pkg/ja3"
-	"github.com/h3adex/phalanx/pkg/router"
-	"github.com/h3adex/phalanx/pkg/watcher"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/net/http"
+	"github.com/h3adex/guardgress/internal/net/http/httputil"
+	"github.com/h3adex/guardgress/pkg/annotations"
+	"github.com/h3adex/guardgress/pkg/ja3"
+	"github.com/h3adex/guardgress/pkg/router"
+	"github.com/h3adex/guardgress/pkg/watcher"
 	"log"
 	"sync"
 )
@@ -30,6 +30,11 @@ func New(config *Config) *Server {
 		Config:       config,
 		RoutingTable: &router.RoutingTable{},
 	}
+
+	if s.Config.TlsPort > 443 {
+		s.RoutingTable.DevMode = true
+	}
+
 	return s
 }
 

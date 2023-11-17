@@ -28,7 +28,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	tls2 "github.com/h3adex/phalanx/internal/crypto/tls"
+	tls2 "github.com/h3adex/guardgress/internal/crypto/tls"
 	"io"
 	"io/ioutil"
 	"log"

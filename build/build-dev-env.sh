@@ -10,8 +10,8 @@ set -o pipefail
 
 export K8S_VERSION=${K8S_VERSION:-v1.26.3@sha256:61b92f38dff6ccc29969e7aa154d34e38b89443af1a2c14e6cfbd2df6419c66f}
 export TAG=1.0.0-dev
-DEV_IMAGE=phalanx:${TAG}
-INGRESS_DEV_CLUSTER_NAME="phalanx-dev-cluster"
+DEV_IMAGE=guardgress:${TAG}
+INGRESS_DEV_CLUSTER_NAME="guardgress-dev-cluster"
 DIR=$(cd $(dirname "${BASH_SOURCE}") && pwd -P)
 
 if ! command -v kind &> /dev/null; then
@@ -63,40 +63,23 @@ fi
 
 if ! helm ls | grep -q whoami; then
     echo "[dev-env] Installing whoami test service with helm"
-    # Create a separate directory for values.yaml to keep things organized
-    mkdir -p bin/values
-    cat > bin/values/whoami.yaml <<EOF
-ingress:
-  enabled: true
-  ingressClassName: "phalanx"
-  pathType: ImplementationSpecific
-  annotations: {}
-  hosts:
-    - host: whoami.local
-      paths:
-        - /
-  tls:
-    - secretName: ingress-tls
-      hosts:
-        - whoami.local
-EOF
     helm repo add cowboysysop https://cowboysysop.github.io/charts/
-    helm install whoami cowboysysop/whoami --version 5.1.0 -f bin/values/whoami.yaml
+    helm install whoami cowboysysop/whoami --version 5.1.0
 else
     echo "[dev-env] whoami is already installed. Skipping installation."
 fi
 
 echo "[dev-env] Deploying local ingress controller"
-cat <<EOF > bin/phalanx.yaml
+cat <<EOF > bin/guardgress.yaml
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: phalanx-sa
+  name: guardgress-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: phalanx-cluster-role
+  name: guardgress-cluster-role
 rules:
   - apiGroups: [""]
     resources: ["services","secrets","endpoints"]
@@ -108,38 +91,38 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: phalanx-role-binding
+  name: guardgress-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: phalanx-cluster-role
+  name: guardgress-cluster-role
 subjects:
   - kind: ServiceAccount
-    name: phalanx-sa
+    name: guardgress-sa
     namespace: default
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: phalanx
+  name: guardgress
   namespace: default
   labels:
-    app: phalanx
+    app: guardgress
 spec:
   selector:
     matchLabels:
-      app: phalanx
+      app: guardgress
   template:
     metadata:
       labels:
-        app: phalanx
+        app: guardgress
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      serviceAccountName: phalanx-sa
+      serviceAccountName: guardgress-sa
       containers:
-        - image: docker.io/phalanx:1.0.0-dev
-          name: phalanx
+        - image: docker.io/guardgress:1.0.0-dev
+          name: guardgress
           imagePullPolicy: Never
           env:
             - name: PORT
@@ -153,10 +136,37 @@ spec:
               containerPort: 81
             - name: https
               containerPort: 444
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    guardgress/add-ja3-header: "true"
+  name: whoami
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+  - host: whoami.local
+    http:
+      paths:
+      - backend:
+          service:
+            name: whoami
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - localhost
+    secretName: ingress-tls
+status:
+  loadBalancer: {}
 EOF
 
-kubectl delete -f bin/phalanx.yaml --ignore-not-found=true
-kubectl apply -f bin/phalanx.yaml
+kubectl delete -f bin/guardgress.yaml --ignore-not-found=true
+kubectl apply -f bin/guardgress.yaml
 
 echo "Kubernetes cluster ready and ingress listening on localhost using ports 80 and 443"
-echo "To delete the dev cluster, execute: 'kind delete cluster --name phalanx-dev-cluster'"
+echo "To delete the dev cluster, execute: 'kind delete cluster --name guardgress-dev-cluster'"

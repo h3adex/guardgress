@@ -7,7 +7,7 @@ package httptest
 import (
 	"bytes"
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"io"
 	"net/textproto"
 	"strconv"

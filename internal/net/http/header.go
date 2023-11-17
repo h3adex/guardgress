@@ -5,7 +5,7 @@
 package http
 
 import (
-	"github.com/h3adex/phalanx/internal/net/http/internal/ascii"
+	"github.com/h3adex/guardgress/internal/net/http/internal/ascii"
 	"io"
 	"net/http/httptrace"
 	"net/textproto"

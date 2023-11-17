@@ -8,8 +8,8 @@ package cookiejar
 import (
 	"errors"
 	"fmt"
-	"github.com/h3adex/phalanx/internal/net/http"
-	"github.com/h3adex/phalanx/internal/net/http/internal/ascii"
+	"github.com/h3adex/guardgress/internal/net/http"
+	"github.com/h3adex/guardgress/internal/net/http/internal/ascii"
 	"net"
 	"net/url"
 	"sort"

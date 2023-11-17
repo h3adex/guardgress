@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/h3adex/phalanx/internal/crypto/tls"
+	"github.com/h3adex/guardgress/internal/crypto/tls"
 	"io"
 	"net/textproto"
 	"net/url"

@@ -17,7 +17,7 @@ package cgi
 import (
 	"bufio"
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"io"
 	"log"
 	"net"

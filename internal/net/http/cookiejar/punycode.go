@@ -8,7 +8,7 @@ package cookiejar
 
 import (
 	"fmt"
-	"github.com/h3adex/phalanx/internal/net/http/internal/ascii"
+	"github.com/h3adex/guardgress/internal/net/http/internal/ascii"
 	"strings"
 	"unicode/utf8"
 )

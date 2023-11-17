@@ -6,7 +6,7 @@ package cookiejar
 
 import (
 	"fmt"
-	http2 "github.com/h3adex/phalanx/internal/net/http"
+	http2 "github.com/h3adex/guardgress/internal/net/http"
 	"net/url"
 	"sort"
 	"strings"
