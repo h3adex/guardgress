@@ -7,6 +7,9 @@ Guardgress is a project designed to demonstrate the implementation of a Web Appl
 within a Kubernetes Ingress Controller. It's important to note that this project currently 
 does not fully support all functionalities provided by the Ingress API Object.
 
+See [Guardgress-Example](https://github.com/h3adex/guardgress-example) 
+for an example on how to use this controller.
+
 ## Development
 ```sh
 make dev
