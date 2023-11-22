@@ -1,8 +1,8 @@
 package router
 
 import (
+	"crypto/tls"
 	"fmt"
-	"github.com/h3adex/guardgress/internal/crypto/tls"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	v1 "k8s.io/api/networking/v1"
 	"net/url"
@@ -71,8 +71,6 @@ func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
-	/* used for development */
-	fmt.Println(r.TlsCertificates)
 	if r.DevMode {
 		return r.TlsCertificates["localhost"], nil
 	}

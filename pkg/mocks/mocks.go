@@ -3,9 +3,9 @@ package mocks
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"github.com/h3adex/guardgress/internal/crypto/tls"
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"log"
@@ -37,7 +37,7 @@ func IngressMock() *v1.IngressList {
 					Labels:                     nil,
 					Annotations: map[string]string{
 						"guardgress/add-ja3-header": "true",
-						"guardgress/tls-blacklist":  "d41d8cd98f00b204e9800998ecf8427a",
+						"guardgress/ja3-blacklist":  "d41d8cd98f00b204e9800998ecf8427a",
 					},
 					OwnerReferences: nil,
 					Finalizers:      nil,
