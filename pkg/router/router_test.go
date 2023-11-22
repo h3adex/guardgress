@@ -1,7 +1,7 @@
 package router
 
 import (
-	"github.com/h3adex/guardgress/internal/crypto/tls"
+	"crypto/tls"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"testing"

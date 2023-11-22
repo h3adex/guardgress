@@ -2,16 +2,16 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/h3adex/guardgress/internal/crypto/tls"
-	"github.com/h3adex/guardgress/internal/net/http"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"testing"
 	"time"
 )

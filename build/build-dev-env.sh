@@ -131,6 +131,8 @@ spec:
               value: "444"
             - name: HOST
               value: "0.0.0.0"
+            - name: GIN_MODE
+              value: "release"
           ports:
             - name: http
               containerPort: 81

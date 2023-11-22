@@ -2,15 +2,19 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
-	"github.com/h3adex/guardgress/internal/crypto/tls"
-	"github.com/h3adex/guardgress/internal/net/http"
-	"github.com/h3adex/guardgress/internal/net/http/httputil"
+	"github.com/gin-gonic/gin"
+	"github.com/gospider007/ja3"
+	"github.com/gospider007/requests"
+	"github.com/h3adex/fp"
 	"github.com/h3adex/guardgress/pkg/annotations"
-	"github.com/h3adex/guardgress/pkg/ja3"
+	"github.com/h3adex/guardgress/pkg/models"
 	"github.com/h3adex/guardgress/pkg/router"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	"log"
+	"net/http"
+	"net/http/httputil"
 	"sync"
 )
 
@@ -43,11 +47,11 @@ func (s Server) Run(ctx context.Context) {
 
 	wg.Add(1)
 	go func() {
+		log.Println("Starting HTTP-Server on ", s.Config.Port)
 		srv := http.Server{
 			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
 			Handler: s,
 		}
-		log.Println("Starting HTTP-Server on ", srv.Addr)
 		err := srv.ListenAndServe()
 		if err != nil {
 			panic(err)
@@ -56,47 +60,131 @@ func (s Server) Run(ctx context.Context) {
 
 	wg.Add(1)
 	go func() {
-		srv := http.Server{
-			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
-			Handler: s,
-			// disable HTTP/2
-			TLSNextProto: make(map[string]func(*http.Server, *tls.Conn, http.Handler)),
-		}
-		srv.TLSConfig = &tls.Config{
-			GetCertificate: func(hello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-				return s.RoutingTable.GetTlsCertificate(hello.ServerName)
+		log.Println("Starting HTTPS-Server on ", s.Config.TlsPort)
+		handle := gin.Default()
+		handle.NoRoute(s.reverseProxy)
+		err := fp.Server(
+			nil,
+			handle.Handler(),
+			fp.Option{
+				Addr: fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
+				GetCertificate: func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+					return s.RoutingTable.GetTlsCertificate(clientHello.ServerName)
+				},
 			},
-		}
-		log.Println("Starting HTTPS-Server on ", srv.Addr)
-		err := srv.ListenAndServeTLS("", "")
+		)
 		if err != nil {
-			panic(err)
+			log.Fatalln(err)
 		}
 	}()
-
 	wg.Wait()
 }
 
+func (s Server) parseClientHello(ctx *gin.Context) (models.ClientHelloParsed, error) {
+	fpData, ok := ja3.GetFpContextData(ctx.Request.Context())
+	connectionState := fpData.ConnectionState()
+
+	result := models.ClientHelloParsed{
+		NegotiatedProtocol: connectionState.NegotiatedProtocol,
+		TlsVersion:         connectionState.Version,
+		UserAgent:          ctx.Request.UserAgent(),
+		OrderHeaders:       fpData.OrderHeaders(),
+		Cookies:            requests.Cookies(ctx.Request.Cookies()).String(),
+		Tls:                ja3.TlsData{},
+		Ja3:                "",
+		Ja3n:               "",
+		Ja4:                "",
+		Ja4h:               "",
+	}
+
+	tlsData, err := fpData.TlsData()
+	if err == nil {
+		clientHelloParseData := tlsData
+		result.Tls = clientHelloParseData
+		result.Ja3, result.Ja3n = tlsData.Fp()
+		result.Ja4 = tlsData.Ja4()
+		result.Ja4h = fpData.Ja4H(ctx.Request)
+	}
+
+	/*
+		// TODO: any need?
+		h2Ja3Spec := fpData.H2Ja3Spec()
+		if err == nil {
+			result.Http2 = h2Ja3Spec
+			result.AkamaiFp = h2Ja3Spec.Fp()
+		}
+	*/
+
+	if ok {
+		return result, nil
+	}
+
+	return result, fmt.Errorf("unable to fingerprint tls handshake")
+}
+
+func (s Server) reverseProxy(ctx *gin.Context) {
+	ctx.Header("Access-Control-Allow-Origin", "*")
+	svcUrl, parsedAnnotations, err := s.RoutingTable.GetBackend(
+		ctx.Request.Host,
+		ctx.Request.RequestURI,
+	)
+
+	if err != nil {
+		ctx.Writer.WriteHeader(404)
+		_, _ = ctx.Writer.Write([]byte("Not Found"))
+		return
+	}
+
+	parsedClientHello, err := s.parseClientHello(ctx)
+
+	if err != nil {
+		log.Println(err.Error())
+		ctx.Writer.WriteHeader(502)
+		_, _ = ctx.Writer.Write([]byte("Error"))
+		return
+	}
+
+	if annotations.IsTlsFingerprintBlacklisted(parsedAnnotations, parsedClientHello) {
+		ctx.Writer.WriteHeader(403)
+		_, _ = ctx.Writer.Write([]byte("Forbidden"))
+		return
+	}
+
+	if annotations.IsUserAgentBlacklisted(parsedAnnotations, parsedClientHello.UserAgent) {
+		ctx.Writer.WriteHeader(403)
+		_, _ = ctx.Writer.Write([]byte("Forbidden"))
+		return
+	}
+
+	if annotations.AddJa3Header(parsedAnnotations) {
+		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
+		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
+	}
+
+	if annotations.AddJa4Header(parsedAnnotations) {
+		ctx.Request.Header.Add("X-Ja4-Fingerprint", parsedClientHello.Ja4)
+		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
+	proxy.Director = func(req *http.Request) {
+		req.Header = ctx.Request.Header
+		req.Host = svcUrl.Host
+		req.URL.Scheme = svcUrl.Scheme
+		req.URL.Host = svcUrl.Host
+		req.URL.Path = ctx.Param("proxyPath")
+	}
+
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
 func (s Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	svcUrl, parsedAnnotations, err := s.RoutingTable.GetBackend(request.Host, request.RequestURI)
+	svcUrl, _, err := s.RoutingTable.GetBackend(request.Host, request.RequestURI)
 	if err != nil {
 		writer.WriteHeader(404)
 		_, _ = writer.Write([]byte("404 - Not Found"))
 		return
 	}
-
-	ja3Digest := ja3.Digest(request.JA3)
-	if annotations.IsJa3Blacklisted(parsedAnnotations, ja3Digest) {
-		writer.WriteHeader(403)
-		_, _ = writer.Write([]byte("403 - Forbidden"))
-		return
-	}
-
-	if annotations.AddJa3Header(parsedAnnotations) {
-		request.Header.Add("X-Ja3-Fingerprint", request.JA3)
-		request.Header.Add("X-Ja3-Fingerprint-Hash", ja3Digest)
-	}
-
 	p := httputil.NewSingleHostReverseProxy(svcUrl)
 	p.ServeHTTP(writer, request)
 }
