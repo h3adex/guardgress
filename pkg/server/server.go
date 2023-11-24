@@ -8,6 +8,7 @@ import (
 	"github.com/gospider007/ja3"
 	"github.com/gospider007/requests"
 	"github.com/h3adex/fp"
+	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/annotations"
 	"github.com/h3adex/guardgress/pkg/models"
 	"github.com/h3adex/guardgress/pkg/router"
@@ -158,6 +159,7 @@ func (s Server) reverseProxy(ctx *gin.Context) {
 
 	if annotations.AddJa3Header(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
+		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", algorithms.Ja3Digest(parsedClientHello.Ja3))
 		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
 	}
 
