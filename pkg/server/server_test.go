@@ -17,6 +17,7 @@ import (
 )
 
 var mockServerResponse = "mock-svc"
+var mockAddress = "127.0.0.1:10100"
 
 func TestReverseProxy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
@@ -71,12 +72,51 @@ func TestReverseProxy(t *testing.T) {
 	_ = res.Body.Close()
 	assert.Equal(t, mockServerResponse, string(bs))
 
+	// check if reverse proxy returns tls fingerprints
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err = http.NewRequest("GET", "https://127.0.0.1:10102", nil)
+	assert.NoError(t, err)
+	req.Host = "www.guardgress.com"
+
+	res, err = http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	bs, err = io.ReadAll(res.Body)
+	assert.NoError(t, err)
+	_ = res.Body.Close()
+	assert.Equal(t, len(res.Header.Get("X-Ja3-Fingerprint")) > 1, true)
+	assert.Equal(t, len(res.Header.Get("X-Ja4-Fingerprint")) > 1, true)
+
+	// check if user agent block works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err = http.NewRequest("GET", "https://127.0.0.1:10102", nil)
+	req.Header.Add("User-Agent", "curl/7.64.1")
+	assert.NoError(t, err)
+	req.Host = "www.guardgress.com"
+
+	res, err = http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 403, res.StatusCode)
+
+	// check if path routing works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err = http.NewRequest("GET", "https://127.0.0.1:10102/foo", nil)
+	// user agent is for this ingress rule not blocked. Should return 200
+	req.Header.Add("User-Agent", "curl/7.64.1")
+	assert.NoError(t, err)
+	req.Host = "www.guardgress.com"
+
+	res, err = http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
 }
 
 func StartMockServer(ctx context.Context) *http.Server {
 	mockSrv := &http.Server{
-		Addr: "127.0.0.1:10100",
+		Addr: mockAddress,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("X-Ja3-Fingerprint", r.Header.Get("X-Ja3-Fingerprint"))
+			w.Header().Set("X-Ja4-Fingerprint", r.Header.Get("X-Ja4-Fingerprint"))
 			_, _ = io.WriteString(w, mockServerResponse)
 		}),
 	}

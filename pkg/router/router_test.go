@@ -29,7 +29,7 @@ func TestGetBackend(t *testing.T) {
 
 	url, _, err = routingTable.GetBackend("www.guardgress.com", "/foo/bar")
 	assert.NoError(t, err)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	assert.Equal(t, url.Host, "127.0.0.1:10100")
 
 	url, _, err = routingTable.GetBackend("example.guardgress.com", "/foo/bar")
 	assert.NoError(t, err)

@@ -36,8 +36,11 @@ func IngressMock() *v1.IngressList {
 					DeletionGracePeriodSeconds: nil,
 					Labels:                     nil,
 					Annotations: map[string]string{
-						"guardgress/add-ja3-header": "true",
-						"guardgress/ja3-blacklist":  "d41d8cd98f00b204e9800998ecf8427a",
+						"guardgress/add-ja3-header":       "true",
+						"guardgress/add-ja4-header":       "true",
+						"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
+						"guardgress/ja3-blacklist":        "d41d8cd98f00b204e9800998ecf8427a",
+						"guardgress/ja4-blacklist":        "t13d1715h2_5b57614c22b0_93c746dc12af",
 					},
 					OwnerReferences: nil,
 					Finalizers:      nil,
@@ -96,7 +99,7 @@ func IngressMock() *v1.IngressList {
 													Name: "127.0.0.1",
 													Port: v1.ServiceBackendPort{
 														Name:   "",
-														Number: 20100,
+														Number: 10100,
 													},
 												},
 												Resource: nil,

@@ -63,7 +63,7 @@ func (s Server) Run(ctx context.Context) {
 	go func() {
 		log.Println("Starting HTTPS-Server on ", s.Config.TlsPort)
 		handle := gin.Default()
-		handle.NoRoute(s.reverseProxy)
+		handle.NoRoute(s.serveHttps)
 		err := fp.Server(
 			nil,
 			handle.Handler(),
@@ -100,21 +100,11 @@ func (s Server) parseClientHello(ctx *gin.Context) (models.ClientHelloParsed, er
 
 	tlsData, err := fpData.TlsData()
 	if err == nil {
-		clientHelloParseData := tlsData
-		result.Tls = clientHelloParseData
+		result.Tls = tlsData
 		result.Ja3, result.Ja3n = tlsData.Fp()
 		result.Ja4 = tlsData.Ja4()
 		result.Ja4h = fpData.Ja4H(ctx.Request)
 	}
-
-	/*
-		// TODO: any need?
-		h2Ja3Spec := fpData.H2Ja3Spec()
-		if err == nil {
-			result.Http2 = h2Ja3Spec
-			result.AkamaiFp = h2Ja3Spec.Fp()
-		}
-	*/
 
 	if ok {
 		return result, nil
@@ -123,7 +113,7 @@ func (s Server) parseClientHello(ctx *gin.Context) (models.ClientHelloParsed, er
 	return result, fmt.Errorf("unable to fingerprint tls handshake")
 }
 
-func (s Server) reverseProxy(ctx *gin.Context) {
+func (s Server) serveHttps(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	svcUrl, parsedAnnotations, err := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
