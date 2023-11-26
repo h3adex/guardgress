@@ -10,8 +10,10 @@ full support for all functionalities provided by the Ingress API Object.
 
 ## Features
 - [x] Block Requests based on User-Agent Strings
-- [x] Block Requests based on Ja3/Ja4 fingerprint
-- [x] Add Ja4/Ja3 fingerprint hash to the request header
+- [x] Block Requests based on TLS fingerprint (JA3/JA4)
+- [x] Add JA4/JA3 fingerprint hash to the request header
+- [ ] Identify connections using proxies. Method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
+- [ ] Rate Limit/Throttle Requests coming from a single IP Address
 
 Find an example of implementing this controller in 
 [Guardgress-Example](https://github.com/h3adex/guardgress-example).
