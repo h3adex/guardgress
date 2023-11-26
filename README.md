@@ -39,7 +39,9 @@ Please note that Guardgress currently lacks full support for certain functionali
 ```sh
 make dev
 ```
-This command builds the container and deploys the controller to a kind cluster.
+This command facilitates container building and controller deployment on a kind cluster.
+I've successfully tested the functionality of this ingress-controller on an AKS cluster,
+leveraging cert-manager for added support.
 
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
