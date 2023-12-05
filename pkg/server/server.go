@@ -5,8 +5,6 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/gospider007/ja3"
-	"github.com/gospider007/requests"
 	"github.com/h3adex/fp"
 	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/annotations"
@@ -17,6 +15,11 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"sync"
+)
+
+const (
+	InternalErrorResponse  = "Internal Server Error"
+	ForbiddenErrorResponse = "Forbidden"
 )
 
 type Config struct {
@@ -49,11 +52,9 @@ func (s Server) Run(ctx context.Context) {
 	wg.Add(1)
 	go func() {
 		log.Println("Starting HTTP-Server on ", s.Config.Port)
-		srv := http.Server{
-			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
-			Handler: s,
-		}
-		err := srv.ListenAndServe()
+		handle := gin.Default()
+		handle.Any("/*path", s.ServeHTTP)
+		err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port), handle)
 		if err != nil {
 			panic(err)
 		}
@@ -63,7 +64,7 @@ func (s Server) Run(ctx context.Context) {
 	go func() {
 		log.Println("Starting HTTPS-Server on ", s.Config.TlsPort)
 		handle := gin.Default()
-		handle.NoRoute(s.serveHttps)
+		handle.Any("/*path", s.ServeHttps)
 		err := fp.Server(
 			nil,
 			handle.Handler(),
@@ -75,75 +76,43 @@ func (s Server) Run(ctx context.Context) {
 			},
 		)
 		if err != nil {
-			log.Fatalln(err)
+			panic(err)
 		}
 	}()
 	wg.Wait()
 }
 
-func (s Server) parseClientHello(ctx *gin.Context) (models.ClientHelloParsed, error) {
-	fpData, ok := ja3.GetFpContextData(ctx.Request.Context())
-	connectionState := fpData.ConnectionState()
-
-	result := models.ClientHelloParsed{
-		NegotiatedProtocol: connectionState.NegotiatedProtocol,
-		TlsVersion:         connectionState.Version,
-		UserAgent:          ctx.Request.UserAgent(),
-		OrderHeaders:       fpData.OrderHeaders(),
-		Cookies:            requests.Cookies(ctx.Request.Cookies()).String(),
-		Tls:                ja3.TlsData{},
-		Ja3:                "",
-		Ja3n:               "",
-		Ja4:                "",
-		Ja4h:               "",
-	}
-
-	tlsData, err := fpData.TlsData()
-	if err == nil {
-		result.Tls = tlsData
-		result.Ja3, result.Ja3n = tlsData.Fp()
-		result.Ja4 = tlsData.Ja4()
-		result.Ja4h = fpData.Ja4H(ctx.Request)
-	}
-
-	if ok {
-		return result, nil
-	}
-
-	return result, fmt.Errorf("unable to fingerprint tls handshake")
-}
-
-func (s Server) serveHttps(ctx *gin.Context) {
+func (s Server) ServeHttps(ctx *gin.Context) {
 	ctx.Header("Access-Control-Allow-Origin", "*")
-	svcUrl, parsedAnnotations, err := s.RoutingTable.GetBackend(
+	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
 		ctx.Request.RequestURI,
+		ctx.ClientIP(),
 	)
 
-	if err != nil {
-		ctx.Writer.WriteHeader(404)
-		_, _ = ctx.Writer.Write([]byte("Not Found"))
+	if routingError.Error != nil {
+		ctx.Writer.WriteHeader(routingError.StatusCode)
+		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
 		return
 	}
 
-	parsedClientHello, err := s.parseClientHello(ctx)
+	parsedClientHello, err := models.ParseClientHello(ctx)
 
 	if err != nil {
-		log.Println(err.Error())
-		ctx.Writer.WriteHeader(502)
-		_, _ = ctx.Writer.Write([]byte("Error"))
+		ctx.Writer.WriteHeader(503)
+		_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
 		return
 	}
 
 	if annotations.IsTlsFingerprintBlacklisted(parsedAnnotations, parsedClientHello) {
 		ctx.Writer.WriteHeader(403)
-		_, _ = ctx.Writer.Write([]byte("Forbidden"))
+		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
 	}
 
 	if annotations.IsUserAgentBlacklisted(parsedAnnotations, parsedClientHello.UserAgent) {
 		ctx.Writer.WriteHeader(403)
-		_, _ = ctx.Writer.Write([]byte("Forbidden"))
+		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
 	}
 
@@ -170,15 +139,30 @@ func (s Server) serveHttps(ctx *gin.Context) {
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
-func (s Server) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	svcUrl, _, err := s.RoutingTable.GetBackend(request.Host, request.RequestURI)
-	if err != nil {
-		writer.WriteHeader(404)
-		_, _ = writer.Write([]byte("404 - Not Found"))
+func (s Server) ServeHTTP(ctx *gin.Context) {
+	ctx.Header("Access-Control-Allow-Origin", "*")
+	svcUrl, _, routingError := s.RoutingTable.GetBackend(
+		ctx.Request.Host,
+		ctx.Request.RequestURI,
+		ctx.ClientIP(),
+	)
+
+	if routingError.Error != nil {
+		ctx.Writer.WriteHeader(routingError.StatusCode)
+		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
 		return
 	}
-	p := httputil.NewSingleHostReverseProxy(svcUrl)
-	p.ServeHTTP(writer, request)
+
+	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
+	proxy.Director = func(req *http.Request) {
+		req.Header = ctx.Request.Header
+		req.Host = svcUrl.Host
+		req.URL.Scheme = svcUrl.Scheme
+		req.URL.Host = svcUrl.Host
+		req.URL.Path = ctx.Param("proxyPath")
+	}
+
+	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
 func (s Server) UpdateRoutingTable(payload watcher.Payload) {

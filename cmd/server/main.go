@@ -43,7 +43,10 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		w.Run(ctx)
+		err := w.Run(ctx)
+		if err != nil {
+			return
+		}
 	}()
 
 	wg.Wait()

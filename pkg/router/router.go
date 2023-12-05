@@ -3,7 +3,9 @@ package router
 import (
 	"crypto/tls"
 	"fmt"
+	"github.com/h3adex/guardgress/pkg/limitHandler"
 	"github.com/h3adex/guardgress/pkg/watcher"
+	"github.com/ulule/limiter/v3"
 	v1 "k8s.io/api/networking/v1"
 	"net/url"
 	"regexp"
@@ -13,20 +15,28 @@ import (
 type RoutingTable struct {
 	Ingresses       *v1.IngressList
 	TlsCertificates map[string]*tls.Certificate
-	DevMode         bool
+	IngressLimiters []*limiter.Limiter
+	// TODO: this should be a env value
+	DevMode bool
+}
+
+type RoutingError struct {
+	Error      error
+	StatusCode int
 }
 
 func (r *RoutingTable) Update(payload watcher.Payload) {
 	r.Ingresses = payload.Ingresses
 	r.TlsCertificates = payload.TlsCertificates
+	r.IngressLimiters = payload.IngressLimiters
 }
 
-func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string]string, error) {
+func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]string, RoutingError) {
 	pathTypePrefix := v1.PathTypePrefix
 	pathTypeImplementationSpecific := v1.PathTypeImplementationSpecific
 	pathTypeExact := v1.PathTypeExact
 
-	for _, ingress := range r.Ingresses.Items {
+	for index, ingress := range r.Ingresses.Items {
 		if ingress.Spec.Rules == nil {
 			continue
 		}
@@ -37,37 +47,74 @@ func (r *RoutingTable) GetBackend(host string, uri string) (*url.URL, map[string
 			}
 
 			for _, path := range rule.HTTP.Paths {
-				if path.PathType == nil {
+				// No PathType annotation should work as PathTypeExact
+				if path.PathType == nil || *path.PathType == pathTypeExact {
 					if path.Path == uri {
+						if limitHandler.IpIsLimited(
+							r.IngressLimiters[index],
+							ingress.Annotations,
+							ip,
+						) {
+							return &url.URL{
+									Host:   "",
+									Scheme: "",
+								}, make(map[string]string),
+								RoutingError{
+									Error:      fmt.Errorf("rate limited"),
+									StatusCode: 429,
+								}
+						}
+
 						return &url.URL{
-							Host:   fmt.Sprintf("%s:%d", path.Backend.Service.Name, path.Backend.Service.Port.Number),
+							Host: fmt.Sprintf(
+								"%s:%d",
+								path.Backend.Service.Name,
+								path.Backend.Service.Port.Number,
+							),
 							Scheme: "http",
-						}, ingress.Annotations, nil
+						}, ingress.Annotations, RoutingError{}
 					}
 				}
 
-				switch *path.PathType {
-				case pathTypeExact:
-					if path.Path == uri {
-						return &url.URL{
-							Host:   fmt.Sprintf("%s:%d", path.Backend.Service.Name, path.Backend.Service.Port.Number),
-							Scheme: "http",
-						}, ingress.Annotations, nil
-					}
-
-				case pathTypePrefix, pathTypeImplementationSpecific:
+				if (path.PathType != nil) && (*path.PathType == pathTypePrefix || *path.PathType == pathTypeImplementationSpecific) {
 					if strings.HasPrefix(uri, path.Path) {
+						if limitHandler.IpIsLimited(
+							r.IngressLimiters[index],
+							ingress.Annotations,
+							ip,
+						) {
+							return &url.URL{
+									Host:   "",
+									Scheme: "",
+								}, make(map[string]string),
+								RoutingError{
+									Error:      fmt.Errorf("rate limited"),
+									StatusCode: 429,
+								}
+						}
+
 						return &url.URL{
-							Host:   fmt.Sprintf("%s:%d", path.Backend.Service.Name, path.Backend.Service.Port.Number),
+							Host: fmt.Sprintf(
+								"%s:%d",
+								path.Backend.Service.Name,
+								path.Backend.Service.Port.Number,
+							),
 							Scheme: "http",
-						}, ingress.Annotations, nil
+						}, ingress.Annotations, RoutingError{}
 					}
 				}
 			}
 		}
 	}
 
-	return &url.URL{Host: "", Scheme: ""}, make(map[string]string), fmt.Errorf("no service found for host %s", host)
+	return &url.URL{
+			Host:   "",
+			Scheme: "",
+		}, make(map[string]string),
+		RoutingError{
+			Error:      fmt.Errorf("not found"),
+			StatusCode: 404,
+		}
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {

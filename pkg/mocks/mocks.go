@@ -13,177 +13,173 @@ import (
 	"time"
 )
 
-func IngressMock() *v1.IngressList {
-	pathTypeExact := v1.PathTypeExact
-	pathTypePrefix := v1.PathTypePrefix
+var pathTypeExact = v1.PathTypeExact
+var pathTypePrefix = v1.PathTypePrefix
+var pathTypeImplementationSpecific = v1.PathTypeImplementationSpecific
 
-	return &v1.IngressList{
-		TypeMeta: v12.TypeMeta{
-			Kind:       "",
-			APIVersion: "",
+func IngressExactPathTypeMock() v1.Ingress {
+	return v1.Ingress{
+		ObjectMeta: v12.ObjectMeta{
+			Name:                       "",
+			GenerateName:               "",
+			Namespace:                  "",
+			UID:                        "",
+			ResourceVersion:            "",
+			Generation:                 0,
+			CreationTimestamp:          v12.Time{},
+			DeletionTimestamp:          nil,
+			DeletionGracePeriodSeconds: nil,
+			Labels:                     nil,
+			Annotations:                map[string]string{},
+			OwnerReferences:            nil,
+			Finalizers:                 nil,
+			ManagedFields:              nil,
 		},
-		Items: []v1.Ingress{
-			{
-				ObjectMeta: v12.ObjectMeta{
-					Name:                       "",
-					GenerateName:               "",
-					Namespace:                  "",
-					UID:                        "",
-					ResourceVersion:            "",
-					Generation:                 0,
-					CreationTimestamp:          v12.Time{},
-					DeletionTimestamp:          nil,
-					DeletionGracePeriodSeconds: nil,
-					Labels:                     nil,
-					Annotations: map[string]string{
-						"guardgress/add-ja3-header":       "true",
-						"guardgress/add-ja4-header":       "true",
-						"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
-						"guardgress/ja3-blacklist":        "d41d8cd98f00b204e9800998ecf8427a",
-						"guardgress/ja4-blacklist":        "t13d1715h2_5b57614c22b0_93c746dc12af",
-					},
-					OwnerReferences: nil,
-					Finalizers:      nil,
-					ManagedFields:   nil,
-				},
-				Spec: v1.IngressSpec{
-					IngressClassName: nil,
-					DefaultBackend:   nil,
-					TLS:              nil,
-					Rules: []v1.IngressRule{
-						{
-							Host: "www.guardgress.com",
-							IngressRuleValue: v1.IngressRuleValue{
-								HTTP: &v1.HTTPIngressRuleValue{
-									Paths: []v1.HTTPIngressPath{
-										{
-											Path:     "/",
-											PathType: &pathTypeExact,
-											Backend: v1.IngressBackend{
-												Service: &v1.IngressServiceBackend{
-													Name: "127.0.0.1",
-													Port: v1.ServiceBackendPort{
-														Name:   "",
-														Number: 10100,
-													},
-												},
-												Resource: nil,
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "www.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathTypeExact,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 10100,
 											},
 										},
+										Resource: nil,
 									},
 								},
 							},
 						},
 					},
 				},
-				Status: v1.IngressStatus{},
-			},
-			{
-				TypeMeta:   v12.TypeMeta{},
-				ObjectMeta: v12.ObjectMeta{},
-				Spec: v1.IngressSpec{
-					IngressClassName: nil,
-					DefaultBackend:   nil,
-					TLS:              nil,
-					Rules: []v1.IngressRule{
-						{
-							Host: "www.guardgress.com",
-							IngressRuleValue: v1.IngressRuleValue{
-								HTTP: &v1.HTTPIngressRuleValue{
-									Paths: []v1.HTTPIngressPath{
-										{
-											Path:     "/",
-											PathType: &pathTypePrefix,
-											Backend: v1.IngressBackend{
-												Service: &v1.IngressServiceBackend{
-													Name: "127.0.0.1",
-													Port: v1.ServiceBackendPort{
-														Name:   "",
-														Number: 10100,
-													},
-												},
-												Resource: nil,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				Status: v1.IngressStatus{},
-			},
-			{
-				TypeMeta:   v12.TypeMeta{},
-				ObjectMeta: v12.ObjectMeta{},
-				Spec: v1.IngressSpec{
-					IngressClassName: nil,
-					DefaultBackend:   nil,
-					TLS:              nil,
-					Rules: []v1.IngressRule{
-						{
-							Host: "example.guardgress.com",
-							IngressRuleValue: v1.IngressRuleValue{
-								HTTP: &v1.HTTPIngressRuleValue{
-									Paths: []v1.HTTPIngressPath{
-										{
-											Path:     "/",
-											PathType: &pathTypePrefix,
-											Backend: v1.IngressBackend{
-												Service: &v1.IngressServiceBackend{
-													Name: "127.0.0.1",
-													Port: v1.ServiceBackendPort{
-														Name:   "",
-														Number: 30100,
-													},
-												},
-												Resource: nil,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				Status: v1.IngressStatus{},
-			},
-			{
-				TypeMeta:   v12.TypeMeta{},
-				ObjectMeta: v12.ObjectMeta{},
-				Spec: v1.IngressSpec{
-					IngressClassName: nil,
-					DefaultBackend:   nil,
-					TLS:              nil,
-					Rules: []v1.IngressRule{
-						{
-							Host: "example2.guardgress.com",
-							IngressRuleValue: v1.IngressRuleValue{
-								HTTP: &v1.HTTPIngressRuleValue{
-									Paths: []v1.HTTPIngressPath{
-										{
-											Path:     "/",
-											PathType: nil,
-											Backend: v1.IngressBackend{
-												Service: &v1.IngressServiceBackend{
-													Name: "127.0.0.1",
-													Port: v1.ServiceBackendPort{
-														Name:   "",
-														Number: 40100,
-													},
-												},
-												Resource: nil,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-				Status: v1.IngressStatus{},
 			},
 		},
+		Status: v1.IngressStatus{},
+	}
+}
+
+func IngressPathTypePrefixMock() v1.Ingress {
+	return v1.Ingress{
+		TypeMeta:   v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "www.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &pathTypePrefix,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 10100,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+}
+
+func IngressPathTypeImplementationSpecificTypeMock() v1.Ingress {
+	return v1.Ingress{
+		TypeMeta:   v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "www.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/foo",
+									PathType: &pathTypeImplementationSpecific,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 10100,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+}
+
+func IngressNoPathTypeMock() v1.Ingress {
+	return v1.Ingress{
+		TypeMeta:   v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "www.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: nil,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 10100,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
 	}
 }
 

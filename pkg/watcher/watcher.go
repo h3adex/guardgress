@@ -4,6 +4,8 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/bep/debounce"
+	"github.com/h3adex/guardgress/pkg/limitHandler"
+	"github.com/ulule/limiter/v3"
 	"k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
@@ -17,6 +19,7 @@ import (
 type Payload struct {
 	Ingresses       *v1.IngressList
 	TlsCertificates map[string]*tls.Certificate
+	IngressLimiters []*limiter.Limiter
 }
 
 type Watcher struct {
@@ -43,6 +46,9 @@ func (w *Watcher) onChange() {
 		if ingress.Spec.TLS == nil {
 			continue
 		}
+
+		ingressLimiters := limitHandler.GetIngressLimiter(ingress)
+		payload.IngressLimiters = append(payload.IngressLimiters, ingressLimiters)
 
 		for _, tlsCert := range ingress.Spec.TLS {
 			if tlsCert.SecretName == "" {

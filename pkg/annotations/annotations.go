@@ -11,6 +11,22 @@ const (
 	UserAgentBlacklist = "guardgress/user-agent-blacklist"
 	AddJa3HeaderKey    = "guardgress/add-ja3-header"
 	AddJa4HeaderKey    = "guardgress/add-ja4-header"
+	LimitWhitelist     = "guardgress/limit-ip-whitelist"
+	// LimitPeriod You can also use the simplified format "<limit>-<period>"", with the given
+	// periods:
+	//
+	// * "S": second
+	// * "M": minute
+	// * "H": hour
+	// * "D": day
+	//
+	// Examples:
+	//
+	// * 5 reqs/second: "5-S"
+	// * 10 reqs/minute: "10-M"
+	// * 1000 reqs/hour: "1000-H"
+	// * 2000 reqs/day: "2000-D"
+	LimitPeriod = "guardgress/limit-period"
 )
 
 func isHeaderEnabled(annotations map[string]string, key string) bool {
@@ -50,6 +66,18 @@ func IsTlsFingerprintBlacklisted(
 						return true
 					}
 				}
+			}
+		}
+	}
+
+	return false
+}
+
+func IsIpWhitelisted(annotations map[string]string, ip string) bool {
+	if whitelist, ok := annotations[LimitWhitelist]; ok {
+		for _, ipWhitelist := range strings.Split(whitelist, ",") {
+			if ipWhitelist == ip {
+				return true
 			}
 		}
 	}

@@ -144,6 +144,7 @@ kind: Ingress
 metadata:
   annotations:
     guardgress/add-ja3-header: "true"
+    guardgress/limit-rpm-by-ip: "1"
   name: whoami
   namespace: default
 spec:
