@@ -12,7 +12,7 @@ const (
 	AddJa3HeaderKey    = "guardgress/add-ja3-header"
 	AddJa4HeaderKey    = "guardgress/add-ja4-header"
 	LimitWhitelist     = "guardgress/limit-ip-whitelist"
-	// LimitPeriod You can also use the simplified format "<limit>-<period>"", with the given
+	// LimitPeriod uses the simplified format "<limit>-<period>"", with the given
 	// periods:
 	//
 	// * "S": second
