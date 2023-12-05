@@ -1,5 +1,6 @@
 # Guardgress
-
+![Tests](https://github.com/h3adex/guardgress/actions/workflows/test-go-code.yaml/badge.svg)
+![Docker](https://github.com/h3adex/guardgress/actions/workflows/publish-to-docker.yaml/badge.svg)
 
 **Note**: This project is currently in the development phase and is not 
 recommended for production use. It is a Proof of Concept.
