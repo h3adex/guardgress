@@ -46,10 +46,22 @@ spec:
       labels:
         app: guardgress
     spec:
+      # TODO: Add health checks
       serviceAccountName: guardgress
       containers:
       - image: docker.io/library/guardgress:1.0.0-dev
         name: guardgress
+        env:
+        - name: PORT
+          value: "80"
+        - name: TLS_PORT
+          value: "443"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: GIN_MODE
+          value: "release"
+        - name: LOG_LEVEL
+          value: "info"
         ports:
         - containerPort: 443
           name: https

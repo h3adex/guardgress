@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"github.com/h3adex/fp"
 	"github.com/h3adex/guardgress/pkg/algorithms"
@@ -11,7 +12,7 @@ import (
 	"github.com/h3adex/guardgress/pkg/models"
 	"github.com/h3adex/guardgress/pkg/router"
 	"github.com/h3adex/guardgress/pkg/watcher"
-	"log"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 	"net/http/httputil"
 	"sync"
@@ -34,13 +35,14 @@ type Server struct {
 }
 
 func New(config *Config) *Server {
-	s := &Server{
-		Config:       config,
-		RoutingTable: &router.RoutingTable{},
+	routingTable := &router.RoutingTable{}
+	if err := env.Parse(routingTable); err != nil {
+		log.Fatalln(err)
 	}
 
-	if s.Config.TlsPort > 443 {
-		s.RoutingTable.DevMode = true
+	s := &Server{
+		Config:       config,
+		RoutingTable: routingTable,
 	}
 
 	return s
@@ -51,7 +53,7 @@ func (s Server) Run(ctx context.Context) {
 
 	wg.Add(1)
 	go func() {
-		log.Println("Starting HTTP-Server on ", s.Config.Port)
+		log.Info("Starting HTTP-Server on ", s.Config.Port)
 		handle := gin.Default()
 		handle.Any("/*path", s.ServeHTTP)
 		err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port), handle)
@@ -62,7 +64,7 @@ func (s Server) Run(ctx context.Context) {
 
 	wg.Add(1)
 	go func() {
-		log.Println("Starting HTTPS-Server on ", s.Config.TlsPort)
+		log.Info("Starting HTTPS-Server on ", s.Config.Port)
 		handle := gin.Default()
 		handle.Any("/*path", s.ServeHttps)
 		err := fp.Server(
@@ -89,6 +91,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		ctx.Request.RequestURI,
 		ctx.ClientIP(),
 	)
+	log.Debug("parsed annotations: ", parsedAnnotations)
 
 	if routingError.Error != nil {
 		ctx.Writer.WriteHeader(routingError.StatusCode)
@@ -97,8 +100,11 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 	}
 
 	parsedClientHello, err := models.ParseClientHello(ctx)
+	log.Debug("parsed ja3: ", parsedClientHello.Ja3)
+	log.Debug("parsed ja4: ", parsedClientHello.Ja4)
 
 	if err != nil {
+		log.Error("unable to parse client hello: ", err.Error())
 		ctx.Writer.WriteHeader(503)
 		_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
 		return
@@ -127,6 +133,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)
 	}
 
+	log.Debug("proxying https request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
@@ -153,6 +160,7 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		return
 	}
 
+	log.Debug("proxying http request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header

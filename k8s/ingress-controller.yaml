@@ -51,6 +51,17 @@ spec:
         - name: guardgress
           image: ghcr.io/h3adex/guardgress:latest
           imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "80"
+            - name: TLS_PORT
+              value: "443"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: GIN_MODE
+              value: "release"
+            - name: LOG_LEVEL
+              value: "info"
           ports:
             - name: http
               containerPort: 80

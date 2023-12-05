@@ -2,6 +2,7 @@ package annotations
 
 import (
 	"github.com/h3adex/guardgress/pkg/models"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
@@ -38,6 +39,7 @@ func IsUserAgentBlacklisted(annotations map[string]string, userAgent string) boo
 	if userAgentBlacklist, ok := annotations[UserAgentBlacklist]; ok {
 		for _, ua := range strings.Split(userAgentBlacklist, ",") {
 			if ua == userAgent {
+				log.Error("user agent got blacklisted: ", userAgent)
 				return true
 			}
 		}
@@ -57,12 +59,14 @@ func IsTlsFingerprintBlacklisted(
 			for _, tlsHash := range strings.Split(tlsBlacklist, ",") {
 				if key == Ja3Blacklist {
 					if tlsHash == parsedClientHello.Ja3 || tlsHash == parsedClientHello.Ja3n {
+						log.Error("ja3 fingerprint got blacklisted: ", parsedClientHello.Ja3)
 						return true
 					}
 				}
 
 				if key == Ja4Blacklist {
 					if tlsHash == parsedClientHello.Ja4 || tlsHash == parsedClientHello.Ja4h {
+						log.Error("ja4 fingerprint got blacklisted: ", parsedClientHello.Ja3)
 						return true
 					}
 				}

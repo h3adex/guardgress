@@ -5,13 +5,13 @@ import (
 	"crypto/tls"
 	"github.com/bep/debounce"
 	"github.com/h3adex/guardgress/pkg/limitHandler"
+	log "github.com/sirupsen/logrus"
 	"github.com/ulule/limiter/v3"
 	"k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"log"
 	"sync"
 	"time"
 )
@@ -38,7 +38,7 @@ func (w *Watcher) onChange() {
 	payload := Payload{TlsCertificates: map[string]*tls.Certificate{}}
 	ingresses, err := w.Client.NetworkingV1().Ingresses("").List(context.Background(), v12.ListOptions{})
 	if err != nil {
-		log.Println(err)
+		log.Error("unable to get k8s ingresses: ", err.Error())
 	}
 	payload.Ingresses = ingresses
 
@@ -57,13 +57,13 @@ func (w *Watcher) onChange() {
 
 			secret, err := w.Client.CoreV1().Secrets(ingress.Namespace).Get(context.Background(), tlsCert.SecretName, v12.GetOptions{})
 			if err != nil {
-				log.Println("error getting secret: ", err)
+				log.Error("getting secrets: ", err.Error())
 				continue
 			}
 
 			cert, err := tls.X509KeyPair(secret.Data["tls.crt"], secret.Data["tls.key"])
 			if err != nil {
-				log.Println(err)
+				log.Error("creating x509 key pair: ", err.Error())
 			}
 
 			for _, host := range tlsCert.Hosts {
@@ -76,7 +76,7 @@ func (w *Watcher) onChange() {
 }
 
 func (w *Watcher) Run(ctx context.Context) error {
-	log.Println("Starting Watcher")
+	log.Info("Starting Watcher")
 	factory := informers.NewSharedInformerFactory(w.Client, time.Minute)
 	debounced := debounce.New(time.Second)
 	handler := cache.ResourceEventHandlerFuncs{
@@ -103,7 +103,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 		secretInformer := factory.Core().V1().Secrets().Informer()
 		_, err := secretInformer.AddEventHandler(handler)
 		if err != nil {
-			log.Println(err)
+			log.Error("unable to add secret informer: ", err.Error())
 		}
 		secretInformer.Run(ctx.Done())
 		wg.Done()
@@ -114,7 +114,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 		ingressInformer := factory.Networking().V1().Ingresses().Informer()
 		_, err := ingressInformer.AddEventHandler(handler)
 		if err != nil {
-			log.Println(err)
+			log.Error("unable to add ingress informer: ", err.Error())
 		}
 		ingressInformer.Run(ctx.Done())
 		wg.Done()
@@ -125,7 +125,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 		serviceInformer := factory.Core().V1().Services().Informer()
 		_, err := serviceInformer.AddEventHandler(handler)
 		if err != nil {
-			log.Println(err)
+			log.Error("unable to add service informer: ", err.Error())
 		}
 		serviceInformer.Run(ctx.Done())
 		wg.Done()

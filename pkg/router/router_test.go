@@ -7,6 +7,7 @@ import (
 	"github.com/ulule/limiter/v3"
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"os"
 	"testing"
 )
 
@@ -15,7 +16,6 @@ func TestGetTlsCertificate(t *testing.T) {
 		Ingresses:       &v1.IngressList{},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
-		DevMode:         false,
 	}
 
 	certificate, err := routingTable.GetTlsCertificate("www.guardgress.com")
@@ -23,6 +23,22 @@ func TestGetTlsCertificate(t *testing.T) {
 	assert.Equal(t, certificate, &tls.Certificate{Certificate: nil, PrivateKey: nil})
 
 	certificate, err = routingTable.GetTlsCertificate("127.0.0.1")
+	assert.NoError(t, err)
+}
+
+func TestGetTlsCertificateForceLocalhost(t *testing.T) {
+	routingTable := RoutingTable{
+		Ingresses:       &v1.IngressList{},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
+	}
+
+	assert.Equal(t, len(os.Getenv("FORCE_LOCALHOST_CERT")) <= 0, true)
+	err := os.Setenv("FORCE_LOCALHOST_CERT", "true")
+	assert.NoError(t, err)
+
+	// sni does not matter should return localhost cert
+	_, err = routingTable.GetTlsCertificate("www.foo.com")
 	assert.NoError(t, err)
 }
 
@@ -37,7 +53,6 @@ func TestGetBackendExactPathType(t *testing.T) {
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil},
-		DevMode:         false,
 	}
 
 	// should work with exact path type
@@ -62,7 +77,6 @@ func TestGetBackendNoPathType(t *testing.T) {
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil},
-		DevMode:         false,
 	}
 
 	// should work with exact path type
@@ -86,7 +100,6 @@ func TestGetBackendPathTypePrefix(t *testing.T) {
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil},
-		DevMode:         false,
 	}
 
 	// should work with path type prefix
@@ -115,7 +128,6 @@ func TestGetBackendPathTypeImplementationSpecific(t *testing.T) {
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil},
-		DevMode:         false,
 	}
 
 	// should work with path type implementation specific
@@ -179,7 +191,6 @@ func TestGetBackendWithMultipleIngresses(t *testing.T) {
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil, nil, nil, nil, nil, nil},
-		DevMode:         false,
 	}
 
 	// mockExactPath

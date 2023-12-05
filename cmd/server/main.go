@@ -5,14 +5,27 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/h3adex/guardgress/pkg/server"
 	"github.com/h3adex/guardgress/pkg/watcher"
+	log "github.com/sirupsen/logrus"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
 )
+
+func init() {
+	logLevel, ok := os.LookupEnv("LOG_LEVEL")
+	// LOG_LEVEL not set, let's default to info
+	if !ok {
+		logLevel = "info"
+	}
+
+	_, err := log.ParseLevel(logLevel)
+	if err != nil {
+		log.SetLevel(log.InfoLevel)
+	}
+}
 
 func main() {
 	wg := sync.WaitGroup{}

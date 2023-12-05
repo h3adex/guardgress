@@ -133,6 +133,10 @@ spec:
               value: "0.0.0.0"
             - name: GIN_MODE
               value: "release"
+            - name: LOG_LEVEL
+              value: "debug"
+            - name: FORCE_LOCALHOST_CERT
+              value: "true"
           ports:
             - name: http
               containerPort: 81

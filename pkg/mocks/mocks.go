@@ -6,9 +6,9 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
 	"math/big"
 	"time"
 )
@@ -225,7 +225,7 @@ func SelfSignedCertMock() (*tls.Certificate, error) {
 func TlsCertificatesMock() map[string]*tls.Certificate {
 	cert, err := SelfSignedCertMock()
 	if err != nil {
-		log.Println("unable to provide self signed cert")
+		log.Error("unable to provide self signed cert")
 
 		return map[string]*tls.Certificate{
 			"www.guardgress.com": {

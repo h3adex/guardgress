@@ -2,8 +2,8 @@ package limitHandler
 
 import (
 	"context"
-	"fmt"
 	"github.com/h3adex/guardgress/pkg/mocks"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
@@ -28,7 +28,7 @@ func TestLimiterModule5H(t *testing.T) {
 	for i := 1; i <= 10; i++ {
 		increment, err := instance.Increment(ctx, key, 1)
 		if err != nil {
-			fmt.Println(err)
+			log.Error(err.Error())
 		}
 
 		if i <= 5 {
@@ -143,7 +143,7 @@ func TestRateLimitTriggeredRPS10(t *testing.T) {
 	for i := 0; i < numRequests; i++ {
 		go func(wg *sync.WaitGroup) {
 			defer wg.Done()
-			fmt.Println("simulating request")
+			log.Info("simulating request")
 			assert.Equal(t, false, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 		}(&wg)
 	}

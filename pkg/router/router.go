@@ -8,6 +8,7 @@ import (
 	"github.com/ulule/limiter/v3"
 	v1 "k8s.io/api/networking/v1"
 	"net/url"
+	"os"
 	"regexp"
 	"strings"
 )
@@ -16,8 +17,6 @@ type RoutingTable struct {
 	Ingresses       *v1.IngressList
 	TlsCertificates map[string]*tls.Certificate
 	IngressLimiters []*limiter.Limiter
-	// TODO: this should be a env value
-	DevMode bool
 }
 
 type RoutingError struct {
@@ -118,7 +117,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
-	if r.DevMode {
+	if len(os.Getenv("FORCE_LOCALHOST_CERT")) > 0 {
 		return r.TlsCertificates["localhost"], nil
 	}
 
