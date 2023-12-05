@@ -8,14 +8,15 @@ import (
 	"github.com/h3adex/guardgress/pkg/limitHandler"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
 	"io"
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"log"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -630,6 +631,25 @@ func TestPathRoutingWithMultipleIngresses(t *testing.T) {
 	res, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)
 	assert.Equal(t, 200, res.StatusCode)
+}
+
+func TestSetLogLevel(t *testing.T) {
+	logLevel, ok := os.LookupEnv("LOG_LEVEL")
+	assert.False(t, ok)
+
+	_ = os.Setenv("LOG_LEVEL", "debug")
+	logLevel, _ = os.LookupEnv("LOG_LEVEL")
+	level, err := log.ParseLevel(logLevel)
+	assert.NoError(t, err)
+	log.SetLevel(level)
+	assert.Equal(t, log.GetLevel(), log.DebugLevel)
+
+	_ = os.Setenv("LOG_LEVEL", "info")
+	logLevel, _ = os.LookupEnv("LOG_LEVEL")
+	level, err = log.ParseLevel(logLevel)
+	assert.NoError(t, err)
+	log.SetLevel(level)
+	assert.Equal(t, log.GetLevel(), log.InfoLevel)
 }
 
 func startMockServer(addr string, ctx context.Context) *http.Server {
