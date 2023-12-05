@@ -25,11 +25,11 @@ Find an example of implementing this controller in
 ## Usage
 To block requests, utilize specific [annotations](pkg/annotations/annotations.go) on the Ingress API Object:
 
-- `guardgress/user-agent-blacklist`: Blocks requests based on comma-separated User-Agent strings.
-- `guardgress/ja3-blacklist`: Blocks requests based on Ja3/Ja3n comma-separated fingerprint hashes.
-- `guardgress/ja4-blacklist`: Blocks requests based on Ja4/Ja4n comma-separated fingerprint hashes.
-- `guardgress/add-ja3-header`: Adds Ja3/Ja3n fingerprint hash to the request header.
-- `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint hash to the request header.
+- `guardgress/user-agent-blacklist`: Blocks requests based on comma-separated User-Agents.
+- `guardgress/ja3-blacklist`: Blocks requests based on Ja3/Ja3n comma-separated fingerprints/hashes.
+- `guardgress/ja4-blacklist`: Blocks requests based on Ja4/Ja4n comma-separated fingerprints/hashes.
+- `guardgress/add-ja3-header`: Adds Ja3/Ja3n fingerprint/hash to the request header.
+- `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint/hash to the request header.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
 - `guardgress/limit-period` uses the simplified format "limit-period"", with the given periods:
 ```text
