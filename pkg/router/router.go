@@ -117,7 +117,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 }
 
 func (r *RoutingTable) GetTlsCertificate(sni string) (*tls.Certificate, error) {
-	if len(os.Getenv("FORCE_LOCALHOST_CERT")) > 0 {
+	if _, ok := os.LookupEnv("FORCE_LOCALHOST_CERT"); ok {
 		return r.TlsCertificates["localhost"], nil
 	}
 

@@ -21,10 +21,14 @@ func init() {
 		logLevel = "info"
 	}
 
-	_, err := log.ParseLevel(logLevel)
+	level, err := log.ParseLevel(logLevel)
 	if err != nil {
+		log.Error("failed to parse LOG_LEVEL, defaulting to info")
 		log.SetLevel(log.InfoLevel)
+		return
 	}
+
+	log.SetLevel(level)
 }
 
 func main() {

@@ -33,9 +33,12 @@ func TestGetTlsCertificateForceLocalhost(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
 	}
 
-	assert.Equal(t, len(os.Getenv("FORCE_LOCALHOST_CERT")) <= 0, true)
+	_, ok := os.LookupEnv("FORCE_LOCALHOST_CERT")
+	assert.Equal(t, ok, false)
 	err := os.Setenv("FORCE_LOCALHOST_CERT", "true")
 	assert.NoError(t, err)
+	_, ok = os.LookupEnv("FORCE_LOCALHOST_CERT")
+	assert.Equal(t, ok, true)
 
 	// sni does not matter should return localhost cert
 	_, err = routingTable.GetTlsCertificate("www.foo.com")
