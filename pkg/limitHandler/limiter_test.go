@@ -32,9 +32,9 @@ func TestLimiterModule5H(t *testing.T) {
 		}
 
 		if i <= 5 {
-			assert.Equal(t, increment.Reached, false)
+			assert.False(t, increment.Reached)
 		} else {
-			assert.Equal(t, increment.Reached, true)
+			assert.True(t, increment.Reached)
 		}
 	}
 }
@@ -54,14 +54,14 @@ func TestLimiterModule1S(t *testing.T) {
 
 	for i := 1; i <= 3; i++ {
 		increment, _ := instance.Increment(ctx, key, 1)
-		assert.Equal(t, increment.Reached, false)
+		assert.False(t, increment.Reached)
 		time.Sleep(time.Second * 1)
 	}
 
 	_, _ = instance.Increment(ctx, key, 1)
 	for i := 1; i <= 5; i++ {
 		increment, _ := instance.Increment(ctx, key, 1)
-		assert.Equal(t, increment.Reached, true)
+		assert.True(t, increment.Reached)
 	}
 
 }
@@ -74,9 +74,9 @@ func TestIsIpLimited(t *testing.T) {
 	}
 	ingressLimiter := GetIngressLimiter(ingressExactPathMock)
 
-	assert.Equal(t, false, IpIsLimited(ingressLimiter, map[string]string{}, ip))
-	assert.Equal(t, true, IpIsLimited(ingressLimiter, map[string]string{}, ip))
-	assert.Equal(t, false, IpIsLimited(ingressLimiter, map[string]string{
+	assert.False(t, IpIsLimited(ingressLimiter, map[string]string{}, ip))
+	assert.True(t, IpIsLimited(ingressLimiter, map[string]string{}, ip))
+	assert.False(t, IpIsLimited(ingressLimiter, map[string]string{
 		"guardgress/limit-ip-whitelist": "127.0.0.1",
 	}, ip))
 
@@ -88,8 +88,8 @@ func TestGetIngressLimiter(t *testing.T) {
 		"guardgress/limit-period": "20-S",
 	}
 	ingressLimiter := GetIngressLimiter(ingressExactPathMock)
-	assert.Equal(t, ingressLimiter.Rate.Limit, int64(20))
-	assert.Equal(t, ingressLimiter.Rate.Period, time.Second)
+	assert.Equal(t, int64(20), ingressLimiter.Rate.Limit)
+	assert.Equal(t, time.Second, ingressLimiter.Rate.Period)
 
 	ingressExactPathMock = mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Annotations = map[string]string{
@@ -97,8 +97,8 @@ func TestGetIngressLimiter(t *testing.T) {
 	}
 	ingressLimiter = GetIngressLimiter(ingressExactPathMock)
 
-	assert.Equal(t, ingressLimiter.Rate.Limit, int64(20))
-	assert.Equal(t, ingressLimiter.Rate.Period, time.Hour)
+	assert.Equal(t, int64(20), ingressLimiter.Rate.Limit)
+	assert.Equal(t, time.Hour, ingressLimiter.Rate.Period)
 
 	ingressExactPathMock = mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Annotations = map[string]string{}
@@ -113,16 +113,16 @@ func TestRateLimitTriggeredRPS1(t *testing.T) {
 		"guardgress/limit-period": "1-S",
 	}
 	ingressLimiter := GetIngressLimiter(ingressExactPathMock)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), false)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), true)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), true)
+	assert.False(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
+	assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
+	assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 	time.Sleep(time.Second * 1)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), false)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), true)
+	assert.False(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
+	assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 	time.Sleep(time.Millisecond * 500)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), true)
+	assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 	time.Sleep(time.Millisecond * 500)
-	assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), false)
+	assert.False(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 }
 
 func TestRateLimitTriggeredRPS10(t *testing.T) {
@@ -144,13 +144,13 @@ func TestRateLimitTriggeredRPS10(t *testing.T) {
 		go func(wg *sync.WaitGroup) {
 			defer wg.Done()
 			log.Info("simulating request")
-			assert.Equal(t, false, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
+			assert.False(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 		}(&wg)
 	}
 	wg.Wait()
 
 	// The IP should be limited after reaching the specified limit
-	assert.Equal(t, true, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
+	assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 }
 
 func TestRateLimitTriggeredRPM10(t *testing.T) {
@@ -164,9 +164,9 @@ func TestRateLimitTriggeredRPM10(t *testing.T) {
 	// range 10
 	for i := 1; i <= 10; i++ {
 		if i <= 5 {
-			assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), false)
+			assert.False(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 		} else {
-			assert.Equal(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp), true)
+			assert.True(t, IpIsLimited(ingressLimiter, ingressExactPathMock.Annotations, mockIp))
 		}
 
 	}

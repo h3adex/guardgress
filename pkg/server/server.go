@@ -65,7 +65,7 @@ func (s Server) Run(ctx context.Context) {
 
 	wg.Add(1)
 	go func() {
-		log.Info("Starting HTTPS-Server on ", s.Config.Port)
+		log.Info("Starting HTTPS-Server on ", s.Config.TlsPort)
 		handle := gin.Default()
 		handle.Any("/*path", s.ServeHttps)
 		err := fp.Server(
@@ -151,7 +151,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
-		req.Host = svcUrl.Host
+		req.Host = ctx.Request.Host
 		req.URL.Scheme = svcUrl.Scheme
 		req.URL.Host = svcUrl.Host
 		req.URL.Path = svcUrl.Path
@@ -190,7 +190,7 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
-		req.Host = svcUrl.Host
+		req.Host = ctx.Request.Host
 		req.URL.Scheme = svcUrl.Scheme
 		req.URL.Host = svcUrl.Host
 		req.URL.Path = svcUrl.Path

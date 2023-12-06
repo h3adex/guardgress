@@ -695,6 +695,59 @@ func TestHealthzRoute(t *testing.T) {
 	assert.Equal(t, string(bs), "ok")
 }
 
+func TestProxyDirectorParams(t *testing.T) {
+	mockServerPort := freePort()
+	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
+	ingressExactPathMock.Spec.Rules[0].Host = "www.guardgress.com"
+	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiterPathExact},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	// check if proxy router params are correct
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+		nil,
+	)
+	req.Host = ingressExactPathMock.Spec.Rules[0].Host
+	assert.NoError(t, err)
+	res, err := http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	bs, err := io.ReadAll(res.Body)
+	assert.Equal(t, mockServerResponse, string(bs))
+	assert.Equal(t, res.Header.Get("X-Requested-With-Host"), ingressExactPathMock.Spec.Rules[0].Host)
+}
+
 func startMockServer(addr string, ctx context.Context) *http.Server {
 	mockSrv := &http.Server{
 		Addr: addr,
@@ -704,6 +757,7 @@ func startMockServer(addr string, ctx context.Context) *http.Server {
 					w.Header().Set(v, r.Header.Get(v))
 				}
 			}
+			w.Header().Set("X-Requested-With-Host", r.Host)
 			_, _ = io.WriteString(w, mockServerResponse)
 		}),
 	}
@@ -745,7 +799,12 @@ func waitForServer(ctx context.Context, port int) bool {
 func freePort() int {
 	// Listen on a random port
 	listener, _ := net.Listen("tcp", ":0")
-	defer listener.Close()
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			log.Error(err)
+		}
+	}(listener)
 
 	// Retrieve the address information
 	address := listener.Addr().(*net.TCPAddr)

@@ -16,86 +16,77 @@ func TestAnnotations(t *testing.T) {
 		"guardgress/limit-ip-whitelist":   "127.0.0.1,127.0.0.2",
 	}
 
-	assert.Equal(
+	assert.True(
 		t,
 		IsTlsFingerprintBlacklisted(
 			mockAnnotations,
 			models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a"},
 		),
-		true,
 	)
 
-	assert.Equal(
+	assert.False(
 		t,
 		IsTlsFingerprintBlacklisted(
 			mockAnnotations,
 			models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a_false"},
 		),
-		false,
 	)
 
-	assert.Equal(
+	assert.True(
 		t,
 		IsTlsFingerprintBlacklisted(
 			mockAnnotations,
 			models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af"},
 		),
-		true,
 	)
 
-	assert.Equal(
+	assert.False(
 		t,
 		IsTlsFingerprintBlacklisted(
 			mockAnnotations,
 			models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af_false"},
 		),
-		false,
 	)
 
-	assert.Equal(
+	assert.True(
 		t,
 		IsUserAgentBlacklisted(
 			mockAnnotations,
 			"curl/7.64.1",
 		),
-		true,
 	)
 
-	assert.Equal(
+	assert.False(
 		t,
 		IsUserAgentBlacklisted(
 			mockAnnotations,
 			"curl/7.64.1_false",
 		),
-		false,
 	)
 
-	assert.Equal(
+	assert.True(
 		t,
 		IsIpWhitelisted(
 			mockAnnotations,
 			"127.0.0.1",
 		),
-		true,
 	)
 
-	assert.Equal(
+	assert.True(
 		t,
 		IsIpWhitelisted(
 			mockAnnotations,
 			"127.0.0.2",
 		),
-		true,
 	)
 
-	assert.Equal(
+	assert.False(
 		t,
 		IsIpWhitelisted(
 			mockAnnotations,
 			"127.0.0.1_false",
 		),
-		false,
 	)
 
-	assert.Equal(t, AddJa3Header(mockAnnotations), true)
+	assert.True(t, AddJa3Header(mockAnnotations))
 }
