@@ -57,6 +57,9 @@ This command facilitates container building and controller deployment on a kind 
 I've successfully tested the functionality of this ingress-controller on an AKS cluster,
 leveraging cert-manager for added support.
 
+Further information on how to set up my local test environment 
+can be found in [here](build/README.md).
+
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
 
