@@ -162,7 +162,8 @@ kind: Ingress
 metadata:
   annotations:
     guardgress/add-ja3-header: "true"
-    guardgress/limit-period: "1-S"
+    guardgress/add-ja4-header: "true"
+    guardgress/limit-period: "10-S"
   name: whoami
   namespace: default
 spec:

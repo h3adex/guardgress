@@ -42,11 +42,9 @@ spec:
   strategy: {}
   template:
     metadata:
-      creationTimestamp: null
       labels:
         app: guardgress
     spec:
-      # TODO: Add health checks
       serviceAccountName: guardgress
       containers:
       - image: docker.io/library/guardgress:1.0.0-dev
@@ -62,6 +60,20 @@ spec:
           value: "release"
         - name: LOG_LEVEL
           value: "info"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 5
         ports:
         - containerPort: 443
           name: https
@@ -74,12 +86,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  creationTimestamp: null
   labels:
     app: guardgress
   name: guardgress
 spec:
-  type: NodePort
+  type: LoadBalancer
   ports:
   - port: 443
     name: https
@@ -91,5 +102,4 @@ spec:
     targetPort: 80
   selector:
     app: guardgress
-status:
-  loadBalancer: {}
+

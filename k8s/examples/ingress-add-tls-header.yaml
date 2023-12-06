@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    guardgress/add-ja3-header: "true"
+    guardgress/add-ja4-header: "true"
+  name: whoami
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: whoami.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
+            path: /
+            pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - localhost
+      secretName: ingress-tls
