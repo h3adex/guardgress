@@ -2,9 +2,6 @@
 ![Tests](https://github.com/h3adex/guardgress/actions/workflows/test-go-code.yaml/badge.svg)
 ![Docker](https://github.com/h3adex/guardgress/actions/workflows/publish-to-docker.yaml/badge.svg)
 
-**Note**: This project is currently in the development phase and is not 
-recommended for production use. It is a Proof of Concept.
-
 Guardgress showcases a Web Application Firewall (WAF) integration within 
 a Kubernetes Ingress Controller. Notably, this project currently lacks 
 full support for all functionalities provided by the Ingress API Object.
@@ -31,7 +28,7 @@ To block requests, utilize specific [annotations](pkg/annotations/annotations.go
 - `guardgress/add-ja3-header`: Adds Ja3/Ja3n fingerprint/hash to the request header.
 - `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint/hash to the request header.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
-- `guardgress/limit-period` uses the simplified format "limit-period"", with the given periods:
+- `guardgress/limit-period` uses the simplified format "limit-period", with the given periods:
 ```text
 "S": second 
 "M": minute
@@ -48,8 +45,9 @@ Examples:
 
 Concrete examples of these annotations can be found in [k8s/examples](k8s/examples).
 
-## Limitations
-Please note that Guardgress currently lacks full support for certain functionalities provided by the Ingress API Object.
+## Known Limitations
+- Guardgress currently does not fully support certain functionalities provided by the Ingress API Object.
+- The existence of a healthz route might cause conflicts for users intending to reverse proxy to this route.
 
 ## Development
 ```sh
@@ -61,6 +59,10 @@ leveraging cert-manager for added support.
 
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
+
+## Disclaimer
+This project is currently in the development phase and is not recommended for production use. 
+It is a Proof of Concept.
 
 ## Acknowledgments
 - [k8s-simple-ingress-controller](https://github.com/calebdoxsey/kubernetes-simple-ingress-controller) provided a starting point for this project.
