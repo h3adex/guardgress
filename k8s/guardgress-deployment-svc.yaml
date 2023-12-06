@@ -81,7 +81,12 @@ spec:
         - containerPort: 80
           name: http
           protocol: TCP
-        resources: {}
+        resources:
+          limits:
+            memory: 256Mi
+          requests:
+            cpu: 50m
+            memory: 128Mi
 ---
 apiVersion: v1
 kind: Service

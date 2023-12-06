@@ -156,6 +156,12 @@ spec:
               containerPort: 81
             - name: https
               containerPort: 444
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
