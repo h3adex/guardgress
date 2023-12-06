@@ -85,6 +85,12 @@ func (s Server) Run(ctx context.Context) {
 }
 
 func (s Server) ServeHttps(ctx *gin.Context) {
+	// check if this request is used to determine the health of the service
+	if ctx.Request.RequestURI == "/healthz" {
+		s.healthz(ctx)
+		return
+	}
+
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
@@ -147,6 +153,11 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 }
 
 func (s Server) ServeHTTP(ctx *gin.Context) {
+	if ctx.Request.RequestURI == "/healthz" {
+		s.healthz(ctx)
+		return
+	}
+
 	ctx.Header("Access-Control-Allow-Origin", "*")
 	svcUrl, _, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
@@ -171,6 +182,14 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 	}
 
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+}
+
+func (s Server) healthz(ctx *gin.Context) {
+	ctx.Writer.WriteHeader(200)
+	_, err := ctx.Writer.Write([]byte("ok"))
+	if err != nil {
+		log.Error("unable to write healthz response: ", err.Error())
+	}
 }
 
 func (s Server) UpdateRoutingTable(payload watcher.Payload) {

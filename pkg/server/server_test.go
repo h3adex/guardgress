@@ -61,7 +61,7 @@ func TestHTTPRequest(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if reverse proxy works for http request
 	req, err := http.NewRequest(
@@ -170,7 +170,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if reverse proxy returns tls fingerprints
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -226,7 +226,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -317,7 +317,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -393,7 +393,7 @@ func TestRateLimit60PerMinute(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -469,7 +469,7 @@ func TestRateLimit60PerHour(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -544,7 +544,7 @@ func TestPathRoutingWithMultipleIngresses(t *testing.T) {
 		srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, 10101)
+	waitForServer(ctx, testReverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -650,6 +650,49 @@ func TestSetLogLevel(t *testing.T) {
 	assert.NoError(t, err)
 	log.SetLevel(level)
 	assert.Equal(t, log.GetLevel(), log.InfoLevel)
+}
+
+func TestHealthzRoute(t *testing.T) {
+	mockServerPort := freePort()
+	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items:    []v1.Ingress{},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	// check if healthz route works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("https://%s:%d/healthz", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+		nil,
+	)
+	assert.NoError(t, err)
+	res, err := http.DefaultClient.Do(req)
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	bs, err := io.ReadAll(res.Body)
+	assert.Equal(t, string(bs), "ok")
 }
 
 func startMockServer(addr string, ctx context.Context) *http.Server {

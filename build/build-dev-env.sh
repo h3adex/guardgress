@@ -137,6 +137,20 @@ spec:
               value: "debug"
             - name: FORCE_LOCALHOST_CERT
               value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 81
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 81
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
           ports:
             - name: http
               containerPort: 81
@@ -148,7 +162,7 @@ kind: Ingress
 metadata:
   annotations:
     guardgress/add-ja3-header: "true"
-    guardgress/limit-rpm-by-ip: "1"
+    guardgress/limit-period: "1-S"
   name: whoami
   namespace: default
 spec:
