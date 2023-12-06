@@ -2,6 +2,7 @@ package router
 
 import (
 	"crypto/tls"
+	"fmt"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
@@ -263,4 +264,29 @@ func TestGetBackendWithMultipleIngresses(t *testing.T) {
 	url, _, err = routingTable.GetBackend("mockPathTypeImplementationSpecific1.guardgress.com", "/bar/foo", "")
 	assert.NoError(t, err.Error)
 	assert.Equal(t, url.Host, "127.0.0.1:20100")
+}
+
+func TestCertManagerImplementation(t *testing.T) {
+	mock := mocks.IngressPathTypeImplementationSpecificTypeMock()
+	mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = 8089
+	mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name = "cm-acme-http-solver-mqvwg"
+	mock.Spec.Rules[0].HTTP.Paths[0].Path = "/.well-known/acme-challenge/5XSJIlrUE9OZl_Og7-Y--vIM2eeGhnvSXJLSejioqcM"
+
+	routingTable := RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				mock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil},
+	}
+
+	// should work with path type implementation specific
+	url, _, err := routingTable.GetBackend("www.guardgress.com", "/.well-known/acme-challenge/5XSJIlrUE9OZl_Og7-Y--vIM2eeGhnvSXJLSejioqcM", "127.0.0.1")
+	assert.NoError(t, err.Error)
+	assert.Equal(t, mock.Spec.Rules[0].HTTP.Paths[0].Path, url.Path)
+	assert.Equal(t, fmt.Sprintf("%s:%d", mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name, mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number), url.Host)
 }

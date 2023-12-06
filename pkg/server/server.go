@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
+	"github.com/gospider007/net/http2"
 	"github.com/h3adex/fp"
 	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/annotations"
@@ -141,12 +142,19 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 
 	log.Debug("proxying https request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
+
+	if svcUrl.Scheme == "https" {
+		proxy.Transport = &http2.Transport{
+			AllowHTTP: true,
+		}
+	}
+
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = svcUrl.Host
 		req.URL.Scheme = svcUrl.Scheme
 		req.URL.Host = svcUrl.Host
-		req.URL.Path = ctx.Param("proxyPath")
+		req.URL.Path = svcUrl.Path
 	}
 
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
@@ -173,12 +181,19 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 
 	log.Debug("proxying http request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
+
+	if svcUrl.Scheme == "https" {
+		proxy.Transport = &http2.Transport{
+			AllowHTTP: true,
+		}
+	}
+
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = svcUrl.Host
 		req.URL.Scheme = svcUrl.Scheme
 		req.URL.Host = svcUrl.Host
-		req.URL.Path = ctx.Param("proxyPath")
+		req.URL.Path = svcUrl.Path
 	}
 
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)

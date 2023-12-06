@@ -70,6 +70,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 								path.Backend.Service.Name,
 								path.Backend.Service.Port.Number,
 							),
+							Path:   path.Path,
 							Scheme: "http",
 						}, ingress.Annotations, RoutingError{}
 					}
@@ -98,6 +99,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 								path.Backend.Service.Name,
 								path.Backend.Service.Port.Number,
 							),
+							Path:   path.Path,
 							Scheme: "http",
 						}, ingress.Annotations, RoutingError{}
 					}
