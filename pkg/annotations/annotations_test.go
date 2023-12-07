@@ -14,105 +14,119 @@ func TestAnnotations(t *testing.T) {
 		"guardgress/ja3-blacklist":        "d41d8cd98f00b204e9800998ecf8427a",
 		"guardgress/ja4-blacklist":        "t13d1715h2_5b57614c22b0_93c746dc12af",
 		"guardgress/limit-ip-whitelist":   "127.0.0.1,127.0.0.2",
-		"guardgress/limit-path-whitelist": "/foo,/.well-known",
+		"guardgress/limit-path-whitelist": "/shop/products/,/.well-known",
 	}
 
-	assert.True(
-		t,
-		IsTlsFingerprintBlacklisted(
-			mockAnnotations,
-			models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a"},
-		),
-	)
+	t.Run("test tls fingerprint blacklisting", func(t *testing.T) {
+		assert.True(
+			t,
+			IsTlsFingerprintBlacklisted(
+				mockAnnotations,
+				models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a"},
+			),
+		)
 
-	assert.False(
-		t,
-		IsTlsFingerprintBlacklisted(
-			mockAnnotations,
-			models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a_false"},
-		),
-	)
+		assert.False(
+			t,
+			IsTlsFingerprintBlacklisted(
+				mockAnnotations,
+				models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a_false"},
+			),
+		)
 
-	assert.True(
-		t,
-		IsTlsFingerprintBlacklisted(
-			mockAnnotations,
-			models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af"},
-		),
-	)
+		assert.True(
+			t,
+			IsTlsFingerprintBlacklisted(
+				mockAnnotations,
+				models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af"},
+			),
+		)
 
-	assert.False(
-		t,
-		IsTlsFingerprintBlacklisted(
-			mockAnnotations,
-			models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af_false"},
-		),
-	)
+		assert.False(
+			t,
+			IsTlsFingerprintBlacklisted(
+				mockAnnotations,
+				models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af_false"},
+			),
+		)
+	})
 
-	assert.True(
-		t,
-		IsUserAgentBlacklisted(
-			mockAnnotations,
-			"curl/7.64.1",
-		),
-	)
+	t.Run("test user agent blacklisting", func(t *testing.T) {
+		assert.True(
+			t,
+			IsUserAgentBlacklisted(
+				mockAnnotations,
+				"curl/7.64.1",
+			),
+		)
 
-	assert.False(
-		t,
-		IsUserAgentBlacklisted(
-			mockAnnotations,
-			"curl/7.64.1_false",
-		),
-	)
+		assert.False(
+			t,
+			IsUserAgentBlacklisted(
+				mockAnnotations,
+				"curl/7.64.1_false",
+			),
+		)
+	})
 
-	assert.True(
-		t,
-		IsIpWhitelisted(
-			mockAnnotations,
-			"127.0.0.1",
-		),
-	)
+	t.Run("test ip whitelisting", func(t *testing.T) {
+		assert.True(
+			t,
+			IsIpWhitelisted(
+				mockAnnotations,
+				"127.0.0.1",
+			),
+		)
 
-	assert.True(
-		t,
-		IsIpWhitelisted(
-			mockAnnotations,
-			"127.0.0.2",
-		),
-	)
+		assert.True(
+			t,
+			IsIpWhitelisted(
+				mockAnnotations,
+				"127.0.0.2",
+			),
+		)
 
-	assert.False(
-		t,
-		IsIpWhitelisted(
-			mockAnnotations,
-			"127.0.0.1_false",
-		),
-	)
+		assert.False(
+			t,
+			IsIpWhitelisted(
+				mockAnnotations,
+				"127.0.0.1_false",
+			),
+		)
 
-	assert.True(
-		t,
-		IsPathWhiteListed(mockAnnotations, "/foo"),
-	)
+		assert.False(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/shop"),
+		)
 
-	assert.True(
-		t,
-		IsPathWhiteListed(mockAnnotations, "/foo/foo"),
-	)
+		assert.True(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/shop/products/abc"),
+		)
 
-	assert.True(
-		t,
-		IsPathWhiteListed(mockAnnotations, "/.well-known"),
-	)
+		assert.True(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/shop/products/def/buy"),
+		)
 
-	assert.True(
-		t,
-		IsPathWhiteListed(mockAnnotations, "/.well-known/foo"),
-	)
+		assert.True(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/.well-known"),
+		)
 
-	assert.False(
-		t,
-		IsPathWhiteListed(mockAnnotations, "/test/healthz"),
-	)
+		assert.True(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/.well-known/foo"),
+		)
 
-	assert.True(t, AddJa3Header(mockAnnotations))
+		assert.False(
+			t,
+			IsPathWhiteListed(mockAnnotations, "/test/healthz"),
+		)
+	})
+
+	t.Run("test add tls fingerprint header", func(t *testing.T) {
+		assert.True(t, AddJa3Header(mockAnnotations))
+		assert.True(t, AddJa4Header(mockAnnotations))
+	})
 }
