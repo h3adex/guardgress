@@ -30,6 +30,5 @@ with the whoami ingress.
 ### Test HPA Functionality
 To test the [HPA](../k8s/guardgress-deployment-hpa.yaml) functionality, use the following command:
 ```sh
-```shell
 echo "GET https://guardgress.notifysolutions.eu/" | vegeta attack -duration=120s -rate=100/1s
 ```
