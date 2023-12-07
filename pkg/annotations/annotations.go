@@ -12,7 +12,8 @@ const (
 	UserAgentBlacklist = "guardgress/user-agent-blacklist"
 	AddJa3HeaderKey    = "guardgress/add-ja3-header"
 	AddJa4HeaderKey    = "guardgress/add-ja4-header"
-	LimitWhitelist     = "guardgress/limit-ip-whitelist"
+	LimitIpWhitelist   = "guardgress/limit-ip-whitelist"
+	LimitPathWhitelist = "guardgress/limit-path-whitelist"
 	// LimitPeriod uses the simplified format "<limit>-<period>"", with the given
 	// periods:
 	//
@@ -77,10 +78,22 @@ func IsTlsFingerprintBlacklisted(
 	return false
 }
 
+func IsPathWhiteListed(annotations map[string]string, path string) bool {
+	if pathWhitelist, ok := annotations[LimitPathWhitelist]; ok {
+		for _, parsedPath := range strings.Split(pathWhitelist, ",") {
+			if strings.HasPrefix(path, parsedPath) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func IsIpWhitelisted(annotations map[string]string, ip string) bool {
-	if whitelist, ok := annotations[LimitWhitelist]; ok {
-		for _, ipWhitelist := range strings.Split(whitelist, ",") {
-			if ipWhitelist == ip {
+	if ipWhitelist, ok := annotations[LimitIpWhitelist]; ok {
+		for _, parsedIp := range strings.Split(ipWhitelist, ",") {
+			if parsedIp == ip {
 				return true
 			}
 		}

@@ -28,6 +28,7 @@ To block requests, utilize specific [annotations](pkg/annotations/annotations.go
 - `guardgress/add-ja3-header`: Adds Ja3/Ja3n fingerprint/hash to the request header.
 - `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint/hash to the request header.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
+- `guardgress/limit-path-whitelist`: Whitelists Paths for rate limiting.
 - `guardgress/limit-period` uses the simplified format "limit-period", with the given periods:
 ```text
 "S": second 

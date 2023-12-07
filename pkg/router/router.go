@@ -49,10 +49,11 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 				// No PathType annotation should work as PathTypeExact
 				if path.PathType == nil || *path.PathType == pathTypeExact {
 					if path.Path == uri {
-						if limitHandler.IpIsLimited(
+						if limitHandler.IsLimited(
 							r.IngressLimiters[index],
 							ingress.Annotations,
 							ip,
+							path.Path,
 						) {
 							return &url.URL{
 									Host:   "",
@@ -78,10 +79,11 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 
 				if (path.PathType != nil) && (*path.PathType == pathTypePrefix || *path.PathType == pathTypeImplementationSpecific) {
 					if strings.HasPrefix(uri, path.Path) {
-						if limitHandler.IpIsLimited(
+						if limitHandler.IsLimited(
 							r.IngressLimiters[index],
 							ingress.Annotations,
 							ip,
+							path.Path,
 						) {
 							return &url.URL{
 									Host:   "",

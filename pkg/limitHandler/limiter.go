@@ -2,15 +2,11 @@ package limitHandler
 
 import (
 	"context"
-	"errors"
 	"github.com/h3adex/guardgress/pkg/annotations"
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 	v1 "k8s.io/api/networking/v1"
 )
-
-// TODO: use this error
-var ErrAnnotationNotFound = errors.New("guardgress/limit-period annotation not found")
 
 func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 	ingressAnnotations := ingress.Annotations
@@ -31,12 +27,16 @@ func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 	return nil
 }
 
-func IpIsLimited(ingressLimiter *limiter.Limiter, ingressAnnotations map[string]string, ip string) bool {
+func IsLimited(ingressLimiter *limiter.Limiter, ingressAnnotations map[string]string, ip, path string) bool {
 	if ingressLimiter == nil {
 		return false
 	}
 
 	if annotations.IsIpWhitelisted(ingressAnnotations, ip) {
+		return false
+	}
+
+	if annotations.IsPathWhiteListed(ingressAnnotations, path) {
 		return false
 	}
 
