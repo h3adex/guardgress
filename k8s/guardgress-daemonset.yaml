@@ -48,7 +48,8 @@ spec:
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: guardgress-sa
       containers:
-        - image: docker.io/guardgress:1.0.0-dev
+        # TODO: Provide specific version
+        - image: ghcr.io/h3adex/guardgress:latest
           name: guardgress
           imagePullPolicy: Never
           env:
@@ -59,7 +60,7 @@ spec:
             - name: HOST
               value: "0.0.0.0"
             - name: GIN_MODE
-              value: "release"
+              value: "production"
             - name: LOG_LEVEL
               value: "info"
           readinessProbe:
@@ -78,9 +79,9 @@ spec:
             timeoutSeconds: 5
           ports:
             - name: http
-              containerPort: 81
+              containerPort: 80
             - name: https
-              containerPort: 444
+              containerPort: 443
           resources:
             limits:
               memory: 256Mi
