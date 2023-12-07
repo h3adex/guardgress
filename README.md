@@ -12,8 +12,9 @@ full support for all functionalities provided by the Ingress API Object.
 - [ ] Whitelist Requests based on TLS fingerprint (JA3/JA4)
 - [x] Add JA4/JA3 fingerprint hash to the request header
 - [x] Rate Limit/Throttle Requests coming from a single IP Address
-- [ ] Use Redis as backend to store rate limiting information
 - [ ] Identify connections using proxies. Method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
+- [ ] Use Redis as backend to store rate limiting information
+- [ ] Install as a Helm Chart
 
 Find an example of implementing this controller in 
 [Guardgress-Example](https://github.com/h3adex/guardgress-example).
