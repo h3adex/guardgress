@@ -19,12 +19,14 @@ func TestGetTlsCertificate(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
 	}
 
-	certificate, err := routingTable.GetTlsCertificate("www.guardgress.com")
-	assert.NoError(t, err)
-	assert.Equal(t, certificate, &tls.Certificate{Certificate: nil, PrivateKey: nil})
+	t.Run("test get tls certificate", func(t *testing.T) {
+		certificate, err := routingTable.GetTlsCertificate("www.guardgress.com")
+		assert.NoError(t, err)
+		assert.Equal(t, certificate, &tls.Certificate{Certificate: nil, PrivateKey: nil})
 
-	certificate, err = routingTable.GetTlsCertificate("127.0.0.1")
-	assert.NoError(t, err)
+		certificate, err = routingTable.GetTlsCertificate("127.0.0.1")
+		assert.NoError(t, err)
+	})
 }
 
 func TestGetTlsCertificateForceLocalhost(t *testing.T) {
@@ -34,16 +36,18 @@ func TestGetTlsCertificateForceLocalhost(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
 	}
 
-	_, ok := os.LookupEnv("FORCE_LOCALHOST_CERT")
-	assert.False(t, ok)
-	err := os.Setenv("FORCE_LOCALHOST_CERT", "true")
-	assert.NoError(t, err)
-	_, ok = os.LookupEnv("FORCE_LOCALHOST_CERT")
-	assert.True(t, ok)
+	t.Run("test get tls certificate for dev mode", func(t *testing.T) {
+		_, ok := os.LookupEnv("FORCE_LOCALHOST_CERT")
+		assert.False(t, ok)
+		err := os.Setenv("FORCE_LOCALHOST_CERT", "true")
+		assert.NoError(t, err)
+		_, ok = os.LookupEnv("FORCE_LOCALHOST_CERT")
+		assert.True(t, ok)
 
-	// sni does not matter should return localhost cert
-	_, err = routingTable.GetTlsCertificate("www.foo.com")
-	assert.NoError(t, err)
+		// sni does not matter should return localhost cert
+		_, err = routingTable.GetTlsCertificate("www.foo.com")
+		assert.NoError(t, err)
+	})
 }
 
 func TestGetBackendExactPathType(t *testing.T) {
@@ -59,14 +63,16 @@ func TestGetBackendExactPathType(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil},
 	}
 
-	// should work with exact path type
-	url, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test exact path type which is present in mock", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// should not work with exact path type
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/abc", "127.0.0.1")
-	assert.Error(t, err.Error)
+	t.Run("test exact path type which is not present in mock", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("www.guardgress.com", "/abc", "127.0.0.1")
+		assert.Error(t, err.Error)
+	})
 }
 
 // No PathType annotation should work as PathTypeExact
@@ -83,14 +89,16 @@ func TestGetBackendNoPathType(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil},
 	}
 
-	// should work with exact path type
-	url, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test no path type which is present in mock", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// should not work with exact path type
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/abc", "127.0.0.1")
-	assert.Error(t, err.Error)
+	t.Run("test no path type which is not present in mock", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("www.guardgress.com", "/abc", "127.0.0.1")
+		assert.Error(t, err.Error)
+	})
 }
 
 func TestGetBackendPathTypePrefix(t *testing.T) {
@@ -106,19 +114,22 @@ func TestGetBackendPathTypePrefix(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil},
 	}
 
-	// should work with path type prefix
-	url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type prefix which is present in mock /foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// should work with path type prefix
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/foo/bar", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type prefix which is not present in mock", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
+		assert.Error(t, err.Error)
+	})
 
-	// should not work with path type prefix
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
-	assert.Error(t, err.Error)
+	t.Run("test path type prefix which is present in mock /foo/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo/bar", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 }
 
 func TestGetBackendPathTypeImplementationSpecific(t *testing.T) {
@@ -134,19 +145,22 @@ func TestGetBackendPathTypeImplementationSpecific(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil},
 	}
 
-	// should work with path type implementation specific
-	url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type implementation specific which is present in mock /foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// should work with path type implementation specific
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/foo/bar", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type implementation specific which is present in mock /foo/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/foo/bar", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// should not work with path type implementation specific
-	url, _, err = routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
-	assert.Error(t, err.Error)
+	t.Run("test path type implementation specific which is not present in mock", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("www.guardgress.com", "/", "127.0.0.1")
+		assert.Error(t, err.Error)
+	})
 }
 
 func TestGetBackendWithMultipleIngresses(t *testing.T) {
@@ -197,73 +211,88 @@ func TestGetBackendWithMultipleIngresses(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil, nil, nil, nil, nil, nil, nil, nil},
 	}
 
-	// mockExactPath
-	url, _, err := routingTable.GetBackend("mockExactPath.guardgress.com", "/", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test exact path type which is present in ingresses mockExactPath/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockExactPath.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockExactPath
-	url, _, err = routingTable.GetBackend("mockExactPath.guardgress.com", "/foo", "")
-	assert.Error(t, err.Error)
+	t.Run("test exact path type which is not present in ingresses mockExactPath/foo", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("mockExactPath.guardgress.com", "/foo", "")
+		assert.Error(t, err.Error)
+	})
+
+	t.Run("test exact path type which is present in ingresses mockExactPath1/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockExactPath1.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 
 	// mockExactPath1
-	url, _, err = routingTable.GetBackend("mockExactPath1.guardgress.com", "/", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	t.Run("test exact path type which is not present in ingresses mockExactPath1/foo", func(t *testing.T) {
+		_, _, err := routingTable.GetBackend("mockExactPath1.guardgress.com", "/foo", "")
+		assert.Error(t, err.Error)
+	})
 
-	// mockExactPath1
-	url, _, err = routingTable.GetBackend("mockExactPath1.guardgress.com", "/foo", "")
-	assert.Error(t, err.Error)
+	t.Run("test no path type which is present in ingresses mockNoPath/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockNoPath.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockNoPath
-	url, _, err = routingTable.GetBackend("mockNoPath.guardgress.com", "/", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test no path type which is present in ingresses mockNoPath/foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockNoPath1.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 
-	// mockNoPath1
-	url, _, err = routingTable.GetBackend("mockNoPath1.guardgress.com", "/", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	t.Run("test path type prefix which is present in ingresses mockPathTypePrefix/foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypePrefix.guardgress.com", "/foo", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockPathTypePrefix
-	url, _, err = routingTable.GetBackend("mockPathTypePrefix.guardgress.com", "/foo", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type prefix which is present in ingresses mockPathTypePrefix/foo/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypePrefix.guardgress.com", "/foo/bar", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockPathTypePrefix
-	url, _, err = routingTable.GetBackend("mockPathTypePrefix.guardgress.com", "/foo/bar", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type prefix which is present in ingresses mockPathTypePrefix1/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypePrefix1.guardgress.com", "/bar", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 
-	// mockPathTypePrefix1
-	url, _, err = routingTable.GetBackend("mockPathTypePrefix1.guardgress.com", "/bar", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	t.Run("test path type prefix which is present in ingresses mockPathTypePrefix1/bar/foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypePrefix1.guardgress.com", "/bar/foo", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 
-	// mockPathTypePrefix1
-	url, _, err = routingTable.GetBackend("mockPathTypePrefix1.guardgress.com", "/bar/foo", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	t.Run("test path type implementation specific which is present in ingresses mockPathTypeImplementationSpecific/foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypeImplementationSpecific.guardgress.com", "/foo", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockPathTypeImplementationSpecific
-	url, _, err = routingTable.GetBackend("mockPathTypeImplementationSpecific.guardgress.com", "/foo", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type implementation specific which is present in ingresses mockPathTypeImplementationSpecific/foo/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypeImplementationSpecific.guardgress.com", "/foo/bar", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:10100")
+	})
 
-	// mockPathTypeImplementationSpecific
-	url, _, err = routingTable.GetBackend("mockPathTypeImplementationSpecific.guardgress.com", "/foo/bar", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:10100")
+	t.Run("test path type implementation specific which is present in ingresses mockPathTypeImplementationSpecific1/bar", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypeImplementationSpecific1.guardgress.com", "/bar", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 
-	// mockPathTypeImplementationSpecific1
-	url, _, err = routingTable.GetBackend("mockPathTypeImplementationSpecific1.guardgress.com", "/bar", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
-
-	// mockPathTypeImplementationSpecific1
-	url, _, err = routingTable.GetBackend("mockPathTypeImplementationSpecific1.guardgress.com", "/bar/foo", "")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, url.Host, "127.0.0.1:20100")
+	t.Run("test path type implementation specific which is present in ingresses mockPathTypeImplementationSpecific1/bar/foo", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("mockPathTypeImplementationSpecific1.guardgress.com", "/bar/foo", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1:20100")
+	})
 }
 
 func TestCertManagerImplementation(t *testing.T) {
@@ -284,9 +313,10 @@ func TestCertManagerImplementation(t *testing.T) {
 		IngressLimiters: []*limiter.Limiter{nil},
 	}
 
-	// should work with path type implementation specific
-	url, _, err := routingTable.GetBackend("www.guardgress.com", "/.well-known/acme-challenge/5XSJIlrUE9OZl_Og7-Y--vIM2eeGhnvSXJLSejioqcM", "127.0.0.1")
-	assert.NoError(t, err.Error)
-	assert.Equal(t, mock.Spec.Rules[0].HTTP.Paths[0].Path, url.Path)
-	assert.Equal(t, fmt.Sprintf("%s:%d", mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name, mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number), url.Host)
+	t.Run("test cert_manager well-known request implementation", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("www.guardgress.com", "/.well-known/acme-challenge/5XSJIlrUE9OZl_Og7-Y--vIM2eeGhnvSXJLSejioqcM", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, mock.Spec.Rules[0].HTTP.Paths[0].Path, url.Path)
+		assert.Equal(t, fmt.Sprintf("%s:%d", mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Name, mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number), url.Host)
+	})
 }

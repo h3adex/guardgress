@@ -230,47 +230,119 @@ func TestUserAgentBlacklist(t *testing.T) {
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// should not work
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.1")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 403, res.StatusCode)
+	t.Run("test user_agent curl/7.64.1 should be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should not work
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.2")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 403, res.StatusCode)
+	t.Run("test user_agent curl/7.64.2 should be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.2")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should work
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.3")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	t.Run("test user_agent curl/7.64.3 should not be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.3")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
+}
+
+func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
+	mockServerPort := freePort()
+	numRequests := 10
+	rateLimit := "1-S"
+	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/.well-known"
+	ingressExactPathMock.Annotations = map[string]string{
+		// rate limited after more than 10 requests per second
+		"guardgress/limit-period": rateLimit,
+		// whitelist healthz path
+		"guardgress/limit-path-whitelist": "/foo,/.well-known",
+	}
+	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiterPathExact},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	t.Run("Rate limit should not be triggered on whitelisted path", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/.well-known", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		var wg sync.WaitGroup
+		wg.Add(numRequests)
+
+		// Simulating multiple requests concurrently
+		for i := 0; i < (numRequests); i++ {
+			go func(wg *sync.WaitGroup) {
+				defer wg.Done()
+				res, err := http.DefaultClient.Do(req)
+				assert.NoError(t, err)
+				assert.True(t, res.StatusCode != 429)
+			}(&wg)
+		}
+		wg.Wait()
+	})
 }
 
 func TestRateLimit10PerSecond(t *testing.T) {
@@ -321,32 +393,34 @@ func TestRateLimit10PerSecond(t *testing.T) {
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// should not work
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	var wg sync.WaitGroup
-	wg.Add(requestLimit)
+	t.Run("test 10 simultaneously requests should not trigger rate limit (10S)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// Simulating multiple requests concurrently
-	for i := 0; i < requestLimit; i++ {
-		go func(wg *sync.WaitGroup) {
-			defer wg.Done()
-			res, err := http.DefaultClient.Do(req)
-			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
-		}(&wg)
-	}
-	wg.Wait()
+		var wg sync.WaitGroup
+		wg.Add(requestLimit)
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 429, res.StatusCode)
+		// Simulating multiple requests concurrently
+		for i := 0; i < requestLimit; i++ {
+			go func(wg *sync.WaitGroup) {
+				defer wg.Done()
+				res, err := http.DefaultClient.Do(req)
+				assert.NoError(t, err)
+				assert.Equal(t, 200, res.StatusCode)
+			}(&wg)
+		}
+		wg.Wait()
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 429, res.StatusCode)
+	})
 }
 
 func TestRateLimit60PerMinute(t *testing.T) {
@@ -395,34 +469,35 @@ func TestRateLimit60PerMinute(t *testing.T) {
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
 
-	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// should not work
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	var wg sync.WaitGroup
-	wg.Add(requestLimit)
+	t.Run("test 60 simultaneously requests should not trigger rate limit (60M)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// Simulating multiple requests concurrently
-	for i := 0; i < requestLimit; i++ {
-		go func(wg *sync.WaitGroup) {
-			defer wg.Done()
-			res, err := http.DefaultClient.Do(req)
-			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
-		}(&wg)
-	}
-	wg.Wait()
+		var wg sync.WaitGroup
+		wg.Add(requestLimit)
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 429, res.StatusCode)
+		// Simulating multiple requests concurrently
+		for i := 0; i < requestLimit; i++ {
+			go func(wg *sync.WaitGroup) {
+				defer wg.Done()
+				res, err := http.DefaultClient.Do(req)
+				assert.NoError(t, err)
+				assert.Equal(t, 200, res.StatusCode)
+			}(&wg)
+		}
+		wg.Wait()
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 429, res.StatusCode)
+	})
 }
 
 func TestRateLimit60PerHour(t *testing.T) {
@@ -473,32 +548,33 @@ func TestRateLimit60PerHour(t *testing.T) {
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// should not work
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+	t.Run("test 60 simultaneously requests should not trigger rate limit (60H)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	var wg sync.WaitGroup
-	wg.Add(requestLimit)
+		var wg sync.WaitGroup
+		wg.Add(requestLimit)
 
-	// Simulating multiple requests concurrently
-	for i := 0; i < requestLimit; i++ {
-		go func(wg *sync.WaitGroup) {
-			defer wg.Done()
-			res, err := http.DefaultClient.Do(req)
-			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
-		}(&wg)
-	}
-	wg.Wait()
+		// Simulating multiple requests concurrently
+		for i := 0; i < requestLimit; i++ {
+			go func(wg *sync.WaitGroup) {
+				defer wg.Done()
+				res, err := http.DefaultClient.Do(req)
+				assert.NoError(t, err)
+				assert.Equal(t, 200, res.StatusCode)
+			}(&wg)
+		}
+		wg.Wait()
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 429, res.StatusCode)
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 429, res.StatusCode)
+	})
 }
 
 func TestPathRoutingWithMultipleIngresses(t *testing.T) {
@@ -546,91 +622,97 @@ func TestPathRoutingWithMultipleIngresses(t *testing.T) {
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
 
-	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	// should not work
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.1")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 403, res.StatusCode)
+	t.Run("test if user agent block works with multiple ingresses (curl/7.64.1)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should not work
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.2")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 403, res.StatusCode)
+	t.Run("test if user agent block works with multiple ingresses (curl/7.64.2)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.2")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should work
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.3")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	t.Run("test if user agent block works with multiple ingresses (curl/7.64.3)", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.3")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should work since the user agent block annotation is not set on this ingress object
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/foo", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.1")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	t.Run("test if user agent works on ingress without the block annotation /foo", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/foo", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should work since the user agent block annotation is not set on this ingress object
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/foo/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.2")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	t.Run("test if user agent works on ingress without the block annotation /foo/bar", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/foo/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.2")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	// should work since the user agent block annotation is not set on this ingress object
-	req, err = http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/foo/bar/../bar/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Header.Add("User-Agent", "curl/7.64.3")
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
 
-	res, err = http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	t.Run("test if user agent works on ingress without the block annotation /foo/bar/../bar/bar", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/foo/bar/../bar/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.3")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
 }
 
 func TestSetLogLevel(t *testing.T) {
@@ -680,19 +762,21 @@ func TestHealthzRoute(t *testing.T) {
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
 
-	// check if healthz route works
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/healthz", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	assert.NoError(t, err)
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
-	bs, err := io.ReadAll(res.Body)
-	assert.Equal(t, string(bs), "ok")
+	t.Run("test healthz route", func(t *testing.T) {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/healthz", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		// should not return 404
+		assert.Equal(t, 200, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.Equal(t, string(bs), "ok")
+	})
 }
 
 func TestProxyDirectorParams(t *testing.T) {
@@ -731,21 +815,23 @@ func TestProxyDirectorParams(t *testing.T) {
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
 
-	// check if proxy router params are correct
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-		nil,
-	)
-	req.Host = ingressExactPathMock.Spec.Rules[0].Host
-	assert.NoError(t, err)
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
-	bs, err := io.ReadAll(res.Body)
-	assert.Equal(t, mockServerResponse, string(bs))
-	assert.Equal(t, res.Header.Get("X-Requested-With-Host"), ingressExactPathMock.Spec.Rules[0].Host)
+	t.Run("test proxy director params", func(t *testing.T) {
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Host = ingressExactPathMock.Spec.Rules[0].Host
+		assert.NoError(t, err)
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.Equal(t, mockServerResponse, string(bs))
+		// host header is important for proxy director
+		assert.Equal(t, res.Header.Get("X-Requested-With-Host"), ingressExactPathMock.Spec.Rules[0].Host)
+	})
 }
 
 func startMockServer(addr string, ctx context.Context) *http.Server {

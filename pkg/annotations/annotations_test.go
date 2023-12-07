@@ -14,6 +14,7 @@ func TestAnnotations(t *testing.T) {
 		"guardgress/ja3-blacklist":        "d41d8cd98f00b204e9800998ecf8427a",
 		"guardgress/ja4-blacklist":        "t13d1715h2_5b57614c22b0_93c746dc12af",
 		"guardgress/limit-ip-whitelist":   "127.0.0.1,127.0.0.2",
+		"guardgress/limit-path-whitelist": "/foo,/.well-known",
 	}
 
 	assert.True(
@@ -86,6 +87,31 @@ func TestAnnotations(t *testing.T) {
 			mockAnnotations,
 			"127.0.0.1_false",
 		),
+	)
+
+	assert.True(
+		t,
+		IsPathWhiteListed(mockAnnotations, "/foo"),
+	)
+
+	assert.True(
+		t,
+		IsPathWhiteListed(mockAnnotations, "/foo/foo"),
+	)
+
+	assert.True(
+		t,
+		IsPathWhiteListed(mockAnnotations, "/.well-known"),
+	)
+
+	assert.True(
+		t,
+		IsPathWhiteListed(mockAnnotations, "/.well-known/foo"),
+	)
+
+	assert.False(
+		t,
+		IsPathWhiteListed(mockAnnotations, "/test/healthz"),
 	)
 
 	assert.True(t, AddJa3Header(mockAnnotations))
