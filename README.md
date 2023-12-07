@@ -15,6 +15,7 @@ full support for all functionalities provided by the Ingress API Object.
 - [x] Rate Limit/Throttle Requests coming from a single IP Address
 - [ ] Identify connections using proxies. Method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
 - [ ] Use Redis as backend to store rate limiting information
+- [ ] Https redirect/rewrite
 - [ ] Install as a Helm Chart
 
 Find an example of implementing this controller in 
