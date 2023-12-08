@@ -86,15 +86,21 @@ func (s Server) Run(ctx context.Context) {
 }
 
 func (s Server) ServeHttps(ctx *gin.Context) {
+	// TODO: reach services across multiple namespaces
+	// TODO: https://stackoverflow.com/questions/68346279/nginx-ingress-sends-private-ip-for-x-real-ip-to-services
 	// check if this request is used to determine the health of the service
 	if ctx.Request.RequestURI == "/healthz" {
 		s.healthz(ctx)
 		return
 	}
 
-	req, err := httputil.DumpRequest(ctx.Request, true)
-	log.Debug("request coming from ip: ", ctx.ClientIP())
-	log.Debug("request dump: ", string(req))
+	if log.GetLevel() == log.DebugLevel {
+		req, err := httputil.DumpRequest(ctx.Request, true)
+		if err != nil {
+			log.Debug("request dump: ", string(req))
+		}
+		log.Debug("request ip: ", ctx.ClientIP())
+	}
 
 	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
@@ -152,7 +158,6 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		}
 	}
 
-	ctx.Request.Header.Add("X-Forwarded-For", ctx.ClientIP())
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = ctx.Request.Host
@@ -169,8 +174,6 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		s.healthz(ctx)
 		return
 	}
-
-	log.Debug("request coming from ip: ", ctx.ClientIP())
 
 	svcUrl, _, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
@@ -193,7 +196,6 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		}
 	}
 
-	ctx.Request.Header.Add("X-Forwarded-For", ctx.ClientIP())
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = ctx.Request.Host
