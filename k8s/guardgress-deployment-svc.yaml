@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: guardgress
+  name: guardgress-sa
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: pod-reader
+  name: guardgress-cr
 rules:
 - apiGroups: [""]
   resources: ["services","secrets"]
@@ -18,27 +18,27 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: pod-reader-binding
+  name: guardgress-role-binding
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: pod-reader
+  name: guardgress-cr
 subjects:
 - kind: ServiceAccount
-  name: guardgress
+  name: guardgress-sa
   namespace: default
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: guardgress
-  name: guardgress
+    app: guardgress-ingress-controller
+  name: guardgress-ingress-controller
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: guardgress
+      app: guardgress-ingress-controller
   strategy:
     rollingUpdate:
       maxSurge: 1
@@ -47,9 +47,9 @@ spec:
   template:
     metadata:
       labels:
-        app: guardgress
+        app: guardgress-ingress-controller
     spec:
-      serviceAccountName: guardgress
+      serviceAccountName: guardgress-sa
       containers:
       # TODO: Provide specific version
       - image: ghcr.io/h3adex/guardgress:latest
@@ -97,8 +97,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: guardgress
-  name: guardgress
+    app: guardgress-svc
+  name: guardgress-svc
 spec:
   type: LoadBalancer
   ports:
@@ -111,5 +111,5 @@ spec:
     protocol: TCP
     targetPort: 80
   selector:
-    app: guardgress
+    app: guardgress-ingress-controller
 

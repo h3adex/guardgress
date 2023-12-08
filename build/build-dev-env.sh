@@ -79,14 +79,14 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: guardgress-cluster-role
+  name: guardgress-cr
 rules:
-  - apiGroups: [""]
-    resources: ["services","secrets","endpoints"]
-    verbs: ["get", "watch", "list"]
-  - apiGroups: ["extensions","networking.k8s.io"]
-    resources: ["ingresses",]
-    verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["services","secrets"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses",]
+  verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -95,34 +95,34 @@ metadata:
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: guardgress-cluster-role
+  name: guardgress-cr
 subjects:
-  - kind: ServiceAccount
-    name: guardgress-sa
-    namespace: default
+- kind: ServiceAccount
+  name: guardgress-sa
+  namespace: default
 ---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: guardgress
+  name: guardgress-ingress-controller
   namespace: default
   labels:
-    app: guardgress
+    app: guardgress-ingress-controller
 spec:
   selector:
     matchLabels:
-      app: guardgress
+      app: guardgress-ingress-controller
   template:
     metadata:
       labels:
-        app: guardgress
+        app: guardgress-ingress-controller
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: guardgress-sa
       containers:
         - image: docker.io/guardgress:1.0.0-dev
-          name: guardgress
+          name: guardgress-ingress-controller
           imagePullPolicy: Never
           env:
             - name: PORT
