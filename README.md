@@ -18,9 +18,6 @@ full support for all functionalities provided by the Ingress API Object.
 - [ ] Https redirect/rewrite
 - [ ] Install as a Helm Chart
 
-Find an example of implementing this controller in 
-[Guardgress-Example](https://github.com/h3adex/guardgress-example).
-
 ## Images
 - [ghcr.io/h3adex/guardgress:latest](https://github.com/h3adex/guardgress/pkgs/container/guardgress)
 

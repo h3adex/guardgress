@@ -92,7 +92,10 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Access-Control-Allow-Origin", "*")
+	req, err := httputil.DumpRequest(ctx.Request, true)
+	log.Debug("request coming from ip: ", ctx.ClientIP())
+	log.Debug("request dump: ", string(req))
+
 	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
 		ctx.Request.RequestURI,
@@ -149,6 +152,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		}
 	}
 
+	ctx.Request.Header.Add("X-Forwarded-For", ctx.ClientIP())
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = ctx.Request.Host
@@ -166,7 +170,8 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Access-Control-Allow-Origin", "*")
+	log.Debug("request coming from ip: ", ctx.ClientIP())
+
 	svcUrl, _, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
 		ctx.Request.RequestURI,
@@ -188,6 +193,7 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		}
 	}
 
+	ctx.Request.Header.Add("X-Forwarded-For", ctx.ClientIP())
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = ctx.Request.Host
