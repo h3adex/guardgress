@@ -45,6 +45,8 @@ Examples:
 1000 reqs/hour: "1000-H"
 2000 reqs/day: "2000-D"
 ```
+If you want to use the limit-period annotation, make sure to set externalTrafficPolicy to Local in the service object of the ingress controller. 
+Otherwise, the rate limiting will not work as intended. More Information can be found here: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
 
 Concrete examples of these annotations can be found in [k8s/examples](k8s/examples).
 
