@@ -27,6 +27,21 @@ kubectl edit ingress whoami
 This will allow you to modify and test various annotations associated 
 with the whoami ingress.
 
+### Go Tests
+Before running any Go tests, ensure you've added specific entries to your /etc/hosts file:
+```txt
+127.0.0.1        localhost 127.0.0.1.default.svc.cluster.local 127.0.0.1.test.svc.cluster.local
+```
+These entries are necessary for server_test.go to function correctly. 
+Regrettably, this approach is the current requirement to mimic a 
+Kubernetes environment for our tests. If you have alternative solutions, 
+I'm open to suggestions.
+
+To execute the Go tests, utilize the following command:
+```sh
+go test -cover ./pkg/...
+```
+
 ### Test HPA Functionality
 To test the [HPA](../k8s/guardgress-deployment-hpa.yaml) functionality, use the following command:
 ```sh

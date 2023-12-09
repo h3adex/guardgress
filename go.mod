@@ -7,9 +7,12 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gospider007/ja3 v0.0.0-20231029025157-38fc2f8f2d91
+	github.com/gospider007/net v0.0.0-20231028084010-313c148cf0a1
 	github.com/gospider007/requests v0.0.0-20231107034155-de1c366b1e46
 	github.com/h3adex/fp v0.0.0-20231121110146-224beb073d4b
+	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
+	github.com/ulule/limiter/v3 v3.11.2
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v0.28.2
@@ -49,7 +52,6 @@ require (
 	github.com/gospider007/gson v0.0.0-20231024092648-c97546a0287d // indirect
 	github.com/gospider007/gtls v0.0.0-20231024092712-01193b9f0404 // indirect
 	github.com/gospider007/kinds v0.0.0-20231024093643-7a4424f2d30e // indirect
-	github.com/gospider007/net v0.0.0-20231028084010-313c148cf0a1 // indirect
 	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256 // indirect
 	github.com/gospider007/tools v0.0.0-20231104124710-69ac32876ccc // indirect
 	github.com/gospider007/websocket v0.0.0-20231104023155-0d1a787293d3 // indirect
@@ -67,20 +69,17 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/quic-go v0.40.0 // indirect
 	github.com/refraction-networking/utls v1.5.4 // indirect
-	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.11 // indirect
-	github.com/ulule/limiter/v3 v3.11.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.12.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

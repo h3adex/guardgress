@@ -67,8 +67,9 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 
 						return &url.URL{
 							Host: fmt.Sprintf(
-								"%s:%d",
+								"%s.%s.svc.cluster.local:%d",
 								path.Backend.Service.Name,
+								ingress.Namespace,
 								path.Backend.Service.Port.Number,
 							),
 							Path:   path.Path,
@@ -97,8 +98,9 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 
 						return &url.URL{
 							Host: fmt.Sprintf(
-								"%s:%d",
+								"%s.%s.svc.cluster.local:%d",
 								path.Backend.Service.Name,
+								ingress.Namespace,
 								path.Backend.Service.Port.Number,
 							),
 							Path:   path.Path,

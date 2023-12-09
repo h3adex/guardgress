@@ -20,20 +20,7 @@ var pathTypeImplementationSpecific = v1.PathTypeImplementationSpecific
 func IngressExactPathTypeMock() v1.Ingress {
 	return v1.Ingress{
 		ObjectMeta: v12.ObjectMeta{
-			Name:                       "",
-			GenerateName:               "",
-			Namespace:                  "",
-			UID:                        "",
-			ResourceVersion:            "",
-			Generation:                 0,
-			CreationTimestamp:          v12.Time{},
-			DeletionTimestamp:          nil,
-			DeletionGracePeriodSeconds: nil,
-			Labels:                     nil,
-			Annotations:                map[string]string{},
-			OwnerReferences:            nil,
-			Finalizers:                 nil,
-			ManagedFields:              nil,
+			Namespace: "default",
 		},
 		Spec: v1.IngressSpec{
 			IngressClassName: nil,
@@ -71,8 +58,10 @@ func IngressExactPathTypeMock() v1.Ingress {
 
 func IngressPathTypePrefixMock() v1.Ingress {
 	return v1.Ingress{
-		TypeMeta:   v12.TypeMeta{},
-		ObjectMeta: v12.ObjectMeta{},
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+		},
 		Spec: v1.IngressSpec{
 			IngressClassName: nil,
 			DefaultBackend:   nil,
@@ -109,8 +98,10 @@ func IngressPathTypePrefixMock() v1.Ingress {
 
 func IngressPathTypeImplementationSpecificTypeMock() v1.Ingress {
 	return v1.Ingress{
-		TypeMeta:   v12.TypeMeta{},
-		ObjectMeta: v12.ObjectMeta{},
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+		},
 		Spec: v1.IngressSpec{
 			IngressClassName: nil,
 			DefaultBackend:   nil,
@@ -147,8 +138,10 @@ func IngressPathTypeImplementationSpecificTypeMock() v1.Ingress {
 
 func IngressNoPathTypeMock() v1.Ingress {
 	return v1.Ingress{
-		TypeMeta:   v12.TypeMeta{},
-		ObjectMeta: v12.ObjectMeta{},
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+		},
 		Spec: v1.IngressSpec{
 			IngressClassName: nil,
 			DefaultBackend:   nil,

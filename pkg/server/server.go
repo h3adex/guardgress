@@ -86,8 +86,6 @@ func (s Server) Run(ctx context.Context) {
 }
 
 func (s Server) ServeHttps(ctx *gin.Context) {
-	// TODO: reach services across multiple namespaces
-	// TODO: https://stackoverflow.com/questions/68346279/nginx-ingress-sends-private-ip-for-x-real-ip-to-services
 	// check if this request is used to determine the health of the service
 	if ctx.Request.RequestURI == "/healthz" {
 		s.healthz(ctx)

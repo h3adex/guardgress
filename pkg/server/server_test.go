@@ -1,3 +1,7 @@
+// If you want to run this tests you have to edit your /etc/hosts file and add the following line:
+// 127.0.0.1 127.0.0.1.default.svc.cluster.local
+// 127.0.0.1 127.0.0.1.test.svc.cluster.local
+// TODO: is the a better way to do this? Editing /etc/hosts might no be possible in some environments.
 package server
 
 import (
@@ -31,7 +35,7 @@ var testReverseProxyConfig = &Config{
 
 func TestHTTPRequest(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -83,7 +87,7 @@ func TestHTTPRequest(t *testing.T) {
 
 func TestHTTPSRequest(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -136,7 +140,7 @@ func TestHTTPSRequest(t *testing.T) {
 
 func TestTlsFingerprintingAddHeader(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -193,7 +197,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 
 func TestUserAgentBlacklist(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -281,7 +285,7 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 	mockServerPort := freePort()
 	numRequests := 10
 	rateLimit := "1-S"
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -348,7 +352,7 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 func TestRateLimit10PerSecond(t *testing.T) {
 	mockServerPort := freePort()
 	requestLimit := 10
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -426,7 +430,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 func TestRateLimit60PerMinute(t *testing.T) {
 	mockServerPort := freePort()
 	requestLimit := 60
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -503,7 +507,7 @@ func TestRateLimit60PerMinute(t *testing.T) {
 func TestRateLimit60PerHour(t *testing.T) {
 	mockServerPort := freePort()
 	requestLimit := 60
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -577,9 +581,9 @@ func TestRateLimit60PerHour(t *testing.T) {
 	})
 }
 
-func TestPathRoutingWithMultipleIngresses(t *testing.T) {
+func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -595,12 +599,14 @@ func TestPathRoutingWithMultipleIngresses(t *testing.T) {
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
 	}
+	ingressExactPathMock.Namespace = "test"
 	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
+	ingressExactPathMock.Namespace = "test"
 	ingressLimiterPathPrefix := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
@@ -736,7 +742,7 @@ func TestSetLogLevel(t *testing.T) {
 
 func TestHealthzRoute(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -781,7 +787,7 @@ func TestHealthzRoute(t *testing.T) {
 
 func TestProxyDirectorParams(t *testing.T) {
 	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1:%d", mockServerPort)
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
 	testReverseProxyConfig.Port = freePort()
 	testReverseProxyConfig.TlsPort = freePort()
 	ctx, cancel := context.WithCancel(context.Background())
