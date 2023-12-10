@@ -14,6 +14,7 @@ const (
 	AddJa4HeaderKey    = "guardgress/add-ja4-header"
 	LimitIpWhitelist   = "guardgress/limit-ip-whitelist"
 	LimitPathWhitelist = "guardgress/limit-path-whitelist"
+	LimitRedisStore    = "guardgress/limit-redis-store-url"
 	// LimitPeriod uses the simplified format "<limit>-<period>"", with the given
 	// periods:
 	//

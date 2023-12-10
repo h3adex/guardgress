@@ -13,8 +13,8 @@ full support for all functionalities provided by the Ingress API Object.
 - [ ] Whitelist Requests based on TLS fingerprint (JA3/JA4)
 - [x] Add JA4/JA3 fingerprint hash to the request header
 - [x] Rate Limit/Throttle Requests coming from a single IP Address
+- [x] Use Redis as backend to store rate limiting information
 - [ ] Identify connections using proxies. Method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
-- [ ] Use Redis as backend to store rate limiting information
 - [ ] Https redirect/rewrite
 - [ ] Install as a Helm Chart
 
@@ -31,6 +31,7 @@ To block requests, utilize specific [annotations](pkg/annotations/annotations.go
 - `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint/hash to the request header.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
 - `guardgress/limit-path-whitelist`: Whitelists Paths for rate limiting. For instance, if you have an ingress object with a Pathtype set as "Prefix" and Path defined as "/shop," you can specify "/shop/products" to be exempted from rate limiting through whitelisting.
+- `guardgress/limit-redis-store-url`: This parameter defines the URL of the Redis store. If left unspecified, the controller resorts to an in-memory store. Redis becomes essential particularly when operating in High Availability (HA) Mode with multiple pods.
 - `guardgress/limit-period` uses the simplified format "limit-period", with the given periods:
 ```text
 "S": second 

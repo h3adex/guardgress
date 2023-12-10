@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -188,6 +189,20 @@ func TestRateLimitTriggeredRPM10(t *testing.T) {
 		}
 	})
 
+}
+
+func TestCreatingRedisClient(t *testing.T) {
+	t.Run("test redis url does not start with redis://", func(t *testing.T) {
+		redisUrl := "foo://localhost:6379"
+		client, err := GetRedisClient(redisUrl)
+		assert.Error(t, err)
+		assert.Nil(t, client)
+	})
+
+	t.Run("test redis url does start with redis://", func(t *testing.T) {
+		redisUrl := "redis://localhost:6379"
+		assert.True(t, strings.HasPrefix(redisUrl, "redis://"))
+	})
 }
 
 func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
