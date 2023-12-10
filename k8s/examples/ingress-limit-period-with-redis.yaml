@@ -1,0 +1,31 @@
+# This ingress will route incoming requests to the shop service on port 8080.
+# PathType is set to Prefix, so that requests to /products/abc will be routed to the shop service on /products/abc.
+# e.g. curl -k -H "Host: shop.guardgress.com" https://shop.guardgress.com/products/abc -> http://shop:8080/products/abc
+# e.g. curl -k -H "Host: shop.guardgress.com" https://shop.guardgress.com/user/login -> http://shop:8080/user/login
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # 10 Requests per minute
+    guardgress/limit-period: 10-M
+    # Use this redis store to store the request count
+    guardgress/limit-redis-store-url: redis://@redis-master.redis.svc.cluster.local:6379
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls
