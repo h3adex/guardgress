@@ -189,8 +189,19 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 	assert.NoError(t, err)
 	_ = res.Body.Close()
-	assert.Equal(t, len(res.Header.Get("X-Ja3-Fingerprint")) > 1, true)
-	assert.Equal(t, len(res.Header.Get("X-Ja4-Fingerprint")) > 1, true)
+
+	ja3TlsFingerprint := res.Header.Get("X-Ja3-Fingerprint")
+	ja4TlsFingerprint := res.Header.Get("X-Ja4-Fingerprint")
+	assert.True(t, len(ja3TlsFingerprint) > 1)
+	assert.True(t, len(ja4TlsFingerprint) > 1)
+
+	// test if the fingerprint block works
+	srv.RoutingTable.Ingresses.Items[0].Annotations = map[string]string{
+		"guardgress/tls-fingerprint-blacklist": fmt.Sprintf("%s,%s", ja3TlsFingerprint, ja4TlsFingerprint),
+	}
+	// should be forbidden
+	res, err = http.DefaultClient.Do(req)
+	assert.Equal(t, 403, res.StatusCode)
 }
 
 func TestUserAgentBlacklist(t *testing.T) {
@@ -208,7 +219,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
+		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
 	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
@@ -263,13 +274,13 @@ func TestUserAgentBlacklist(t *testing.T) {
 		assert.Equal(t, 403, res.StatusCode)
 	})
 
-	t.Run("test user_agent curl/7.64.3 should not be blocked", func(t *testing.T) {
+	t.Run("test user_agent curl/7.66.3 should not be blocked", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
 			nil,
 		)
-		req.Header.Add("User-Agent", "curl/7.64.3")
+		req.Header.Add("User-Agent", "curl/7.66.3")
 		assert.NoError(t, err)
 		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
@@ -595,7 +606,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
+		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
 	ingressExactPathMock.Namespace = "test"
 	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
@@ -658,13 +669,13 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 		assert.Equal(t, 403, res.StatusCode)
 	})
 
-	t.Run("test if user agent block works with multiple ingresses (curl/7.64.3)", func(t *testing.T) {
+	t.Run("test if user agent block works with multiple ingresses (curl/7.66.3)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
 			nil,
 		)
-		req.Header.Add("User-Agent", "curl/7.64.3")
+		req.Header.Add("User-Agent", "curl/7.66.3")
 		assert.NoError(t, err)
 		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 

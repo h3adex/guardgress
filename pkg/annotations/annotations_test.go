@@ -9,11 +9,11 @@ import (
 func TestAnnotations(t *testing.T) {
 	mockAnnotations := map[string]string{
 		"guardgress/add-tls-fingerprint-header": "true",
-		"guardgress/user-agent-blacklist":       "curl/7.64.1,curl/7.64.2",
-		"guardgress/ja3-blacklist":              "d41d8cd98f00b204e9800998ecf8427a",
-		"guardgress/ja4-blacklist":              "t13d1715h2_5b57614c22b0_93c746dc12af",
-		"guardgress/limit-ip-whitelist":         "127.0.0.1,127.0.0.2",
-		"guardgress/limit-path-whitelist":       "/shop/products/,/.well-known",
+		"guardgress/user-agent-blacklist":       "curl/7.64.*,curl/7.65.*",
+		// ja4,ja
+		"guardgress/tls-fingerprint-blacklist": "t13d1715h2_5b57614c22b0_93c746dc12af,d41d8cd98f00b204e9800998ecf8427a",
+		"guardgress/limit-ip-whitelist":        "127.0.0.1,127.0.0.2",
+		"guardgress/limit-path-whitelist":      "/shop/products/,/.well-known",
 	}
 
 	t.Run("test tls fingerprint blacklisting", func(t *testing.T) {
@@ -59,11 +59,35 @@ func TestAnnotations(t *testing.T) {
 			),
 		)
 
+		assert.True(
+			t,
+			IsUserAgentInBlacklist(
+				mockAnnotations,
+				"curl/7.64.2",
+			),
+		)
+
+		assert.True(
+			t,
+			IsUserAgentInBlacklist(
+				mockAnnotations,
+				"curl/7.65.1",
+			),
+		)
+
+		assert.True(
+			t,
+			IsUserAgentInBlacklist(
+				mockAnnotations,
+				"curl/7.65.2",
+			),
+		)
+
 		assert.False(
 			t,
 			IsUserAgentInBlacklist(
 				mockAnnotations,
-				"curl/7.64.1_false",
+				"curl/7.66.1",
 			),
 		)
 	})

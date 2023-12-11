@@ -3,11 +3,9 @@ kind: Ingress
 metadata:
   annotations:
     # The following user agents are blocked on this ingress resource.
-    "guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2"
-    # The following JA3 fingerprints are blocked on this ingress resource.
-    "guardgress/ja3-blacklist": "d41d8cd98f00b204e9800998ecf8427a"
-    # The following JA4 fingerprints are blocked on this ingress resource.
-    "guardgress/ja4-blacklist": "t13d1715h2_5b57614c22b0_93c746dc12af"
+    "guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*"
+    # The following JA3,JA4 fingerprints are blocked on this ingress resource.
+    "guardgress/tls-fingerprint-blacklist": "d41d8cd98f00b204e9800998ecf8427a,t13d1715h2_5b57614c22b0_93c746dc12af"
     # We are allowing 10 requests per second per IP address.
     "guardgress/limit-period": "10-S"
     # The following IP addresses are allowed to bypass the rate limit.

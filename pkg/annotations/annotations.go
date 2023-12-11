@@ -1,15 +1,16 @@
 package annotations
 
 import (
+	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/models"
 	log "github.com/sirupsen/logrus"
+	"regexp"
 	"strings"
 )
 
 const (
-	Ja3Blacklist            = "guardgress/ja3-blacklist"
-	Ja4Blacklist            = "guardgress/ja4-blacklist"
 	UserAgentBlacklist      = "guardgress/user-agent-blacklist"
+	TLSFingerprintBlackList = "guardgress/tls-fingerprint-blacklist"
 	AddTLSFingerprintHeader = "guardgress/add-tls-fingerprint-header"
 	ForceSSLRedirect        = "guardgress/force-ssl-redirect"
 	LimitIpWhitelist        = "guardgress/limit-ip-whitelist"
@@ -34,8 +35,13 @@ const (
 
 func IsUserAgentInBlacklist(annotations map[string]string, userAgent string) bool {
 	if userAgentBlacklist, ok := annotations[UserAgentBlacklist]; ok {
-		for _, ua := range strings.Split(userAgentBlacklist, ",") {
-			if ua == userAgent {
+		for _, uaPattern := range strings.Split(userAgentBlacklist, ",") {
+			matched, err := regexp.MatchString(uaPattern, userAgent)
+			if err != nil {
+				log.Errorf("Error matching user agent: %s", err)
+				continue
+			}
+			if matched {
 				log.Errorf("User agent got blacklisted: %s", userAgent)
 				return true
 			}
@@ -45,27 +51,19 @@ func IsUserAgentInBlacklist(annotations map[string]string, userAgent string) boo
 }
 
 func IsTlsFingerprintBlacklisted(annotations map[string]string, parsedClientHello models.ClientHelloParsed) bool {
-	blacklistKeys := []string{Ja3Blacklist, Ja4Blacklist}
+	tlsBlacklist, ok := annotations[TLSFingerprintBlackList]
+	if !ok {
+		return false
+	}
 
-	for _, key := range blacklistKeys {
-		tlsBlacklist, ok := annotations[key]
-		if !ok {
-			continue
+	for _, tlsBlacklistValue := range strings.Split(tlsBlacklist, ",") {
+		if tlsBlacklistValue == parsedClientHello.Ja3 || tlsBlacklistValue == parsedClientHello.Ja3n || tlsBlacklistValue == algorithms.Ja3Digest(parsedClientHello.Ja3) {
+			log.Errorf("Ja3 fingerprint got blacklisted: %s", parsedClientHello.Ja3)
+			return true
 		}
-
-		for _, tlsHash := range strings.Split(tlsBlacklist, ",") {
-			switch key {
-			case Ja3Blacklist:
-				if tlsHash == parsedClientHello.Ja3 || tlsHash == parsedClientHello.Ja3n {
-					log.Errorf("Ja3 fingerprint got blacklisted: %s", parsedClientHello.Ja3)
-					return true
-				}
-			case Ja4Blacklist:
-				if tlsHash == parsedClientHello.Ja4 || tlsHash == parsedClientHello.Ja4h {
-					log.Errorf("Ja4 fingerprint got blacklisted: %s", parsedClientHello.Ja4)
-					return true
-				}
-			}
+		if tlsBlacklistValue == parsedClientHello.Ja4 || tlsBlacklistValue == parsedClientHello.Ja4h {
+			log.Errorf("Ja4 fingerprint got blacklisted: %s", parsedClientHello.Ja4)
+			return true
 		}
 	}
 
