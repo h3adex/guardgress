@@ -12,6 +12,7 @@ const (
 	UserAgentBlacklist = "guardgress/user-agent-blacklist"
 	AddJa3HeaderKey    = "guardgress/add-ja3-header"
 	AddJa4HeaderKey    = "guardgress/add-ja4-header"
+	ForceSSLRedirect   = "guardgress/force-ssl-redirect"
 	LimitIpWhitelist   = "guardgress/limit-ip-whitelist"
 	LimitPathWhitelist = "guardgress/limit-path-whitelist"
 	LimitRedisStore    = "guardgress/limit-redis-store-url"

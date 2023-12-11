@@ -173,11 +173,20 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 		return
 	}
 
-	svcUrl, _, routingError := s.RoutingTable.GetBackend(
+	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
 		ctx.Request.Host,
 		ctx.Request.RequestURI,
 		ctx.ClientIP(),
 	)
+
+	if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
+		log.Debug("redirecting to https: ", "https://"+ctx.Request.Host+ctx.Request.URL.String())
+		http.Redirect(ctx.Writer, ctx.Request,
+			"https://"+ctx.Request.Host+ctx.Request.URL.String(),
+			http.StatusMovedPermanently,
+		)
+		return
+	}
 
 	if routingError.Error != nil {
 		ctx.Writer.WriteHeader(routingError.StatusCode)

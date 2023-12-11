@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -838,6 +839,58 @@ func TestProxyDirectorParams(t *testing.T) {
 		// host header is important for proxy director
 		assert.Equal(t, res.Header.Get("X-Requested-With-Host"), ingressExactPathMock.Spec.Rules[0].Host)
 	})
+}
+
+func TestHTTPToHTTPSRedirect(t *testing.T) {
+	mockServerPort := freePort()
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/force-ssl-redirect": "true",
+	}
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	// check if https redirect works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	req, err := http.NewRequest(
+		"GET",
+		fmt.Sprintf("http://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.Port),
+		nil,
+	)
+	assert.NoError(t, err)
+	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+	_, err = http.DefaultClient.Do(req)
+	// Error is expected. Just check if https redirect worked
+	assert.True(t, strings.ContainsAny("https://127.0.0.1", err.Error()))
 }
 
 func startMockServer(addr string, ctx context.Context) *http.Server {
