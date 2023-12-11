@@ -94,7 +94,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 
 	if log.GetLevel() == log.DebugLevel {
 		req, err := httputil.DumpRequest(ctx.Request, true)
-		if err != nil {
+		if err == nil {
 			log.Debug("request dump: ", string(req))
 		}
 		log.Debug("request ip: ", ctx.ClientIP())
@@ -180,11 +180,10 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 	)
 
 	if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
-		log.Debug("redirecting to https: ", "https://"+ctx.Request.Host+ctx.Request.URL.String())
-		http.Redirect(ctx.Writer, ctx.Request,
-			"https://"+ctx.Request.Host+ctx.Request.URL.String(),
-			http.StatusMovedPermanently,
-		)
+		url := fmt.Sprintf("https://%s%s", ctx.Request.Host, ctx.Request.RequestURI)
+		log.Debug("request coming from host: ", ctx.Request.Host)
+		log.Debug("redirecting to https: ", url)
+		http.Redirect(ctx.Writer, ctx.Request, url, http.StatusMovedPermanently)
 		return
 	}
 
