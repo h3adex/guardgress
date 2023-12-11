@@ -27,8 +27,7 @@ To block requests, utilize specific [annotations](pkg/annotations/annotations.go
 - `guardgress/user-agent-blacklist`: Blocks requests based on comma-separated User-Agents.
 - `guardgress/ja3-blacklist`: Blocks requests based on Ja3/Ja3n comma-separated fingerprints/hashes.
 - `guardgress/ja4-blacklist`: Blocks requests based on Ja4/Ja4n comma-separated fingerprints/hashes.
-- `guardgress/add-ja3-header`: Adds Ja3/Ja3n fingerprint/hash to the request header.
-- `guardgress/add-ja4-header`: Adds Ja4/Ja4n fingerprint/hash to the request header.
+- `guardgress/add-tls-fingerprint-header`: Adds `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` values to the request header.
 - `guardgress/force-ssl-redirect`: Forces SSL Redirection. This annotation is only useful if you have a TLS certificate configured for your ingress object.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
 - `guardgress/limit-path-whitelist`: Whitelists Paths for rate limiting. For instance, if you have an ingress object with a Pathtype set as "Prefix" and Path defined as "/shop," you can specify "/shop/products" to be exempted from rate limiting through whitelisting.

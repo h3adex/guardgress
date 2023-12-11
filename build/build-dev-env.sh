@@ -167,8 +167,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    guardgress/add-ja3-header: "true"
-    guardgress/add-ja4-header: "true"
+    guardgress/add-tls-fingerprint-header: "true"
     guardgress/limit-period: "10-S"
   name: whoami
   namespace: default

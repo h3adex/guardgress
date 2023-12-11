@@ -153,10 +153,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
-	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/add-ja3-header": "true",
-		"guardgress/add-ja4-header": "true",
-	}
+	ingressExactPathMock.Annotations = map[string]string{"guardgress/add-tls-fingerprint-header": "true"}
 	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{

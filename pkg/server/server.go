@@ -130,19 +130,16 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		return
 	}
 
-	if annotations.IsUserAgentBlacklisted(parsedAnnotations, parsedClientHello.UserAgent) {
+	if annotations.IsUserAgentInBlacklist(parsedAnnotations, parsedClientHello.UserAgent) {
 		ctx.Writer.WriteHeader(403)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
 	}
 
-	if annotations.AddJa3Header(parsedAnnotations) {
+	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
 		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", algorithms.Ja3Digest(parsedClientHello.Ja3))
 		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
-	}
-
-	if annotations.AddJa4Header(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja4-Fingerprint", parsedClientHello.Ja4)
 		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)
 	}
