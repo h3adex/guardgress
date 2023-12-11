@@ -1,0 +1,29 @@
+# This ingress will route incoming requests to the shop service on port 8080.
+# PathType is set to Prefix, so that requests to /products/abc will be routed to the shop service on /products/abc.
+# e.g. curl -k -H "Host: shop.guardgress.com" https://shop.guardgress.com/products/abc -> http://shop:8080/products/abc
+# e.g. curl -k -H "Host: shop.guardgress.com" https://shop.guardgress.com/user/login -> http://shop:8080/user/login
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # force SSL redirect e.g. http://shop.guardgress.com https://shop.guardgress.com
+    "guardgress/force-ssl-redirect": "true"
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls
