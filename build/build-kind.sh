@@ -42,6 +42,7 @@ else
 fi
 
 if kubectl config get-contexts -o name | grep -q "${INGRESS_DEV_CLUSTER_NAME}"; then
+    echo "kubectl config use-context kind-${INGRESS_DEV_CLUSTER_NAME}"
     kubectl config use-context "kind-${INGRESS_DEV_CLUSTER_NAME}"
 else
     echo "[dev-env] Unable to set kubectl config for the kind cluster"

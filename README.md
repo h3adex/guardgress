@@ -57,7 +57,10 @@ Concrete examples of these annotations can be found in [k8s/examples](k8s/exampl
 
 ## Development
 ```sh
-make dev
+# deploy to local kind cluster
+make dev kind
+# build image and push to azure registry
+make dev azure
 ```
 This command facilitates container building and controller deployment on a kind cluster.
 I've successfully tested the functionality of this ingress-controller on an AKS cluster,
