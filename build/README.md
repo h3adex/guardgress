@@ -3,7 +3,7 @@
 After successfully deploying the controller, test its functionality by sending requests 
 to the ingress controller.
 
-The [build-dev-env.sh](build-dev-env.sh) script deploys whoami along with the matching ingress 
+The [build-dev-env.sh](build-kind.sh) script deploys whoami along with the matching ingress 
 controller to the cluster. The script includes annotations necessary for 
 the ingress controller's deployment. Running the script for the first time 
 prompts the creation of self-signed TLS Certificates.
