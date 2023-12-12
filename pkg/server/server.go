@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/caarlos0/env"
@@ -48,7 +47,7 @@ func New(config *Config) *Server {
 	return s
 }
 
-func (s Server) Run(ctx context.Context) {
+func (s Server) Run() {
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)

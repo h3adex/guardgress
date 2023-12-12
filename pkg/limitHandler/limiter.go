@@ -79,8 +79,7 @@ func IsLimited(ingressLimiter *limiter.Limiter, ingressAnnotations map[string]st
 		return false
 	}
 
-	// TODO: learn more about context.TODO()
-	increment, err := ingressLimiter.Increment(context.TODO(), ip, 1)
+	increment, err := ingressLimiter.Increment(context.Background(), ip, 1)
 	if err != nil {
 		log.Error("failed to increment limiter: ", err.Error())
 		return true
