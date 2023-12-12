@@ -1,6 +1,7 @@
 package annotations
 
 import (
+	"fmt"
 	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/models"
 	log "github.com/sirupsen/logrus"
@@ -9,6 +10,7 @@ import (
 )
 
 const (
+	UserAgentWhitelist      = "guardgress/user-agent-whitelist"
 	UserAgentBlacklist      = "guardgress/user-agent-blacklist"
 	TLSFingerprintBlackList = "guardgress/tls-fingerprint-blacklist"
 	AddTLSFingerprintHeader = "guardgress/add-tls-fingerprint-header"
@@ -33,18 +35,36 @@ const (
 	LimitPeriod = "guardgress/limit-period"
 )
 
-func IsUserAgentInBlacklist(annotations map[string]string, userAgent string) bool {
-	if userAgentBlacklist, ok := annotations[UserAgentBlacklist]; ok {
-		for _, uaPattern := range strings.Split(userAgentBlacklist, ",") {
-			matched, err := regexp.MatchString(uaPattern, userAgent)
-			if err != nil {
-				log.Errorf("Error matching user agent: %s", err)
-				continue
-			}
-			if matched {
-				log.Errorf("User agent got blacklisted: %s", userAgent)
-				return true
-			}
+func IsUserAgentAllowed(annotations map[string]string, userAgent string) bool {
+	whitelistAnnotation := annotations[UserAgentWhitelist]
+	blacklistAnnotation := annotations[UserAgentBlacklist]
+
+	if isUserAgentListed(whitelistAnnotation, userAgent, "whitelist") {
+		return true
+	}
+
+	if isUserAgentListed(blacklistAnnotation, userAgent, "blacklist") {
+		return false
+	}
+
+	return len(whitelistAnnotation) == 0
+}
+
+func isUserAgentListed(userAgentList string, userAgent string, listType string) bool {
+	if userAgentList == "" {
+		return false
+	}
+
+	for _, uaPattern := range strings.Split(userAgentList, ",") {
+		log.Debug(fmt.Sprintf("Matching user agent %s with pattern %s", userAgent, uaPattern))
+		matched, err := regexp.MatchString(uaPattern, userAgent)
+		if err != nil {
+			log.Errorf("Error matching user agent: %s", err)
+			continue
+		}
+		if matched {
+			log.Debugf("User agent got %s: %s", listType, userAgent)
+			return true
 		}
 	}
 	return false

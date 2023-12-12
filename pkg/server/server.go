@@ -130,7 +130,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		return
 	}
 
-	if annotations.IsUserAgentInBlacklist(parsedAnnotations, parsedClientHello.UserAgent) {
+	if !annotations.IsUserAgentAllowed(parsedAnnotations, parsedClientHello.UserAgent) {
 		ctx.Writer.WriteHeader(403)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return

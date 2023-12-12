@@ -8,7 +8,7 @@ a Kubernetes Ingress Controller. Notably, this project currently lacks
 full support for all functionalities provided by the Ingress API Object.
 
 ## Features
-- [x] Block Requests based on User-Agent Strings/Regular Expression
+- [x] Blacklist/Whitelist User-Agent Strings/Regular Expression
 - [x] Block Requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
 - [ ] Whitelist Requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
 - [x] Add JA4/JA3 fingerprint hash to the request header
@@ -24,7 +24,8 @@ full support for all functionalities provided by the Ingress API Object.
 ## Usage
 To block requests, utilize specific [annotations](pkg/annotations/annotations.go) on the Ingress API Object:
 
-- `guardgress/user-agent-blacklist`: Blocks requests based on comma-separated User-Agents.
+- `guardgress/user-agent-whitelist`: Limits access to specific User-Agents (comma-separated). Whitelist takes precedence over the blacklist. If both are set, anything outside the whitelist is blocked. For an example, check [this configuration](k8s/examples/ingress-ua-block-white-and-blacklist.yaml).
+- `guardgress/user-agent-blacklist`: Blocks requests from particular User-Agents (comma-separated).
 - `guardgress/tls-fingerprint-blacklist`: Blocks requests based on `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` comma-separated fingerprints/hashes.
 - `guardgress/add-tls-fingerprint-header`: Adds `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` fingerprints/hashes to the request header.
 - `guardgress/force-ssl-redirect`: Forces SSL Redirection. This annotation is only useful if you have a TLS certificate configured for your ingress object.
