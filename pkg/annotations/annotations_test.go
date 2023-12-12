@@ -11,107 +11,119 @@ func init() {
 	log.SetLevel(log.DebugLevel)
 }
 
-func TestAnnotations(t *testing.T) {
+func TestIsIpWhitelisted(t *testing.T) {
+	t.Run("test ip whitelisting", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/limit-ip-whitelist": "127.0.0.1,127.0.0.2",
+		}
+
+		cases := map[string]bool{
+			"127.0.0.1":       true,
+			"127.0.0.2":       true,
+			"127.0.0.2_false": false,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsIpWhitelisted(mockAnnotations, key))
+		}
+	})
+
+	t.Run("test path whitelisting", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/limit-path-whitelist": "/shop/products/,/.well-known",
+		}
+
+		cases := map[string]bool{
+			"/shop":                  false,
+			"/shop/products/abc":     true,
+			"/shop/products/def/buy": true,
+			"/.well-known":           true,
+			"/.well-known/foo":       true,
+			"/test/healthz":          false,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsPathWhiteListed(mockAnnotations, key))
+		}
+	})
+}
+
+func TestAddTlsFingerprintHeader(t *testing.T) {
 	mockAnnotations := map[string]string{
 		"guardgress/add-tls-fingerprint-header": "true",
-		// ja4,ja3
-		"guardgress/tls-fingerprint-blacklist": "t13d1715h2_5b57614c22b0_93c746dc12af,d41d8cd98f00b204e9800998ecf8427a",
-		"guardgress/limit-ip-whitelist":        "127.0.0.1,127.0.0.2",
-		"guardgress/limit-path-whitelist":      "/shop/products/,/.well-known",
 	}
-
-	t.Run("test tls fingerprint blacklisting", func(t *testing.T) {
-		assert.True(
-			t,
-			IsTlsFingerprintBlacklisted(
-				mockAnnotations,
-				models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a"},
-			),
-		)
-
-		assert.False(
-			t,
-			IsTlsFingerprintBlacklisted(
-				mockAnnotations,
-				models.ClientHelloParsed{Ja3: "d41d8cd98f00b204e9800998ecf8427a_false"},
-			),
-		)
-
-		assert.True(
-			t,
-			IsTlsFingerprintBlacklisted(
-				mockAnnotations,
-				models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af"},
-			),
-		)
-
-		assert.False(
-			t,
-			IsTlsFingerprintBlacklisted(
-				mockAnnotations,
-				models.ClientHelloParsed{Ja4: "t13d1715h2_5b57614c22b0_93c746dc12af_false"},
-			),
-		)
-	})
 
 	t.Run("test add tls fingerprint header", func(t *testing.T) {
 		assert.True(t, IsTLSFingerprintHeaderRequested(mockAnnotations))
 	})
+}
 
-	t.Run("test ip whitelisting", func(t *testing.T) {
-		assert.True(
-			t,
-			IsIpWhitelisted(
-				mockAnnotations,
-				"127.0.0.1",
-			),
-		)
+func TestTLSFingerprintWhiteBlacklistAnnotations(t *testing.T) {
+	t.Run("test tls fingerprint blacklist", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/tls-fingerprint-blacklist": "t13d1715h2_5b57614c22b0_93c746dc12af,d41d8cd98f00b204e9800998ecf8427a",
+		}
+		cases := map[string]bool{
+			"t13d1715h2_5b57614c22b0_93c746dc12af":             false,
+			"d41d8cd98f00b204e9800998ecf8427a":                 false,
+			"d41d8cd98f00b204e9800998ecf8427a_should_work":     true,
+			"t13d1715h2_5b57614c22b0_93c746dc12af_should_work": true,
+		}
 
-		assert.True(
-			t,
-			IsIpWhitelisted(
-				mockAnnotations,
-				"127.0.0.2",
-			),
-		)
+		for key, val := range cases {
+			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ClientHelloParsed{
+				Ja3:  key,
+				Ja3H: key,
+				Ja3n: key,
+				Ja4:  key,
+				Ja4h: key,
+			}))
+		}
+	})
 
-		assert.False(
-			t,
-			IsIpWhitelisted(
-				mockAnnotations,
-				"127.0.0.1_false",
-			),
-		)
+	t.Run("test tls fingerprint whitelist", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/tls-fingerprint-whitelist": "t13d1715h2_5b57614c22b0_93c746dc12af,d41d8cd98f00b204e9800998ecf8427a",
+		}
+		cases := map[string]bool{
+			"t13d1715h2_5b57614c22b0_93c746dc12af":                 true,
+			"d41d8cd98f00b204e9800998ecf8427a":                     true,
+			"d41d8cd98f00b204e9800998ecf8427a_should_not_work":     false,
+			"t13d1715h2_5b57614c22b0_93c746dc12af_should_not_work": false,
+		}
 
-		assert.False(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/shop"),
-		)
+		for key, val := range cases {
+			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ClientHelloParsed{
+				Ja3:  key,
+				Ja3H: key,
+				Ja3n: key,
+				Ja4:  key,
+				Ja4h: key,
+			}))
+		}
+	})
 
-		assert.True(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/shop/products/abc"),
-		)
+	t.Run("test tls fingerprint whitelist/blacklist combined", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/tls-fingerprint-whitelist": "d41d8cd98f00b204e9800998ecf8427a",
+			"guardgress/tls-fingerprint-blacklist": "t13d1715h2_5b57614c22b0_93c746dc12af,d41d8cd98f00b204e9800998ecf8427a",
+		}
+		cases := map[string]bool{
+			"d41d8cd98f00b204e9800998ecf8427a":                     true,
+			"t13d1715h2_5b57614c22b0_93c746dc12af":                 false,
+			"d41d8cd98f00b204e9800998ecf8427a_should_not_work":     false,
+			"t13d1715h2_5b57614c22b0_93c746dc12af_should_not_work": false,
+		}
 
-		assert.True(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/shop/products/def/buy"),
-		)
-
-		assert.True(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/.well-known"),
-		)
-
-		assert.True(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/.well-known/foo"),
-		)
-
-		assert.False(
-			t,
-			IsPathWhiteListed(mockAnnotations, "/test/healthz"),
-		)
+		for key, val := range cases {
+			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ClientHelloParsed{
+				Ja3:  key,
+				Ja3H: key,
+				Ja3n: key,
+				Ja4:  key,
+				Ja4h: key,
+			}))
+		}
 	})
 }
 

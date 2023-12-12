@@ -9,8 +9,7 @@ full support for all functionalities provided by the Ingress API Object.
 
 ## Features
 - [x] Blacklist/Whitelist User-Agent Strings/Regular Expression
-- [x] Block Requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
-- [ ] Whitelist Requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
+- [x] Whitelist/Blacklist requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
 - [x] Add JA4/JA3 fingerprint hash to the request header
 - [x] Rate Limit/Throttle Requests coming from a single IP Address
 - [x] Use Redis as backend to store rate limiting information
@@ -26,7 +25,8 @@ To block requests, utilize specific [annotations](pkg/annotations/annotations.go
 
 - `guardgress/user-agent-whitelist`: Limits access to specific User-Agents (comma-separated). Whitelist takes precedence over the blacklist. If both are set, anything outside the whitelist is blocked. For an example, check [this configuration](k8s/examples/ingress-ua-block-white-and-blacklist.yaml).
 - `guardgress/user-agent-blacklist`: Blocks requests from particular User-Agents (comma-separated).
-- `guardgress/tls-fingerprint-blacklist`: Blocks requests based on `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` comma-separated fingerprints/hashes.
+- `guardgress/tls-fingerprint-whitelist`: Limits access to specific TLS Fingerprints (`Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated). Whitelist takes precedence over the blacklist. If both are set, anything outside the whitelist is blocked. Find an example configuration [here](k8s/examples/ingress-tls-block-white-and-blacklist.yaml).
+- `guardgress/tls-fingerprint-blacklist`: Restricts requests from particular TLS Fingerprints (`Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated).
 - `guardgress/add-tls-fingerprint-header`: Adds `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` fingerprints/hashes to the request header.
 - `guardgress/force-ssl-redirect`: Forces SSL Redirection. This annotation is only useful if you have a TLS certificate configured for your ingress object.
 - `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.

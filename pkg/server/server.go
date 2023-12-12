@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gospider007/net/http2"
 	"github.com/h3adex/fp"
-	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/annotations"
 	"github.com/h3adex/guardgress/pkg/models"
 	"github.com/h3adex/guardgress/pkg/router"
@@ -124,13 +123,8 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		return
 	}
 
-	if annotations.IsTlsFingerprintBlacklisted(parsedAnnotations, parsedClientHello) {
-		ctx.Writer.WriteHeader(403)
-		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
-		return
-	}
-
-	if !annotations.IsUserAgentAllowed(parsedAnnotations, parsedClientHello.UserAgent) {
+	// checks user agent and tls fingerprint
+	if !isRequestAllowed(parsedAnnotations, parsedClientHello) {
 		ctx.Writer.WriteHeader(403)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
@@ -138,7 +132,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 
 	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
-		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", algorithms.Ja3Digest(parsedClientHello.Ja3))
+		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", parsedClientHello.Ja3H)
 		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
 		ctx.Request.Header.Add("X-Ja4-Fingerprint", parsedClientHello.Ja4)
 		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)

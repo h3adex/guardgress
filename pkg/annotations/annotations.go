@@ -12,6 +12,7 @@ import (
 const (
 	UserAgentWhitelist      = "guardgress/user-agent-whitelist"
 	UserAgentBlacklist      = "guardgress/user-agent-blacklist"
+	TLSFingerprintWhitelist = "guardgress/tls-fingerprint-whitelist"
 	TLSFingerprintBlackList = "guardgress/tls-fingerprint-blacklist"
 	AddTLSFingerprintHeader = "guardgress/add-tls-fingerprint-header"
 	ForceSSLRedirect        = "guardgress/force-ssl-redirect"
@@ -70,13 +71,27 @@ func isUserAgentListed(userAgentList string, userAgent string, listType string) 
 	return false
 }
 
-func IsTlsFingerprintBlacklisted(annotations map[string]string, parsedClientHello models.ClientHelloParsed) bool {
-	tlsBlacklist, ok := annotations[TLSFingerprintBlackList]
-	if !ok {
+func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ClientHelloParsed) bool {
+	whitelistAnnotation := annotations[TLSFingerprintWhitelist]
+	blacklistAnnotation := annotations[TLSFingerprintBlackList]
+
+	if isTLSFingerprintListed(whitelistAnnotation, parsedClientHello, "whitelist") {
+		return true
+	}
+
+	if isTLSFingerprintListed(blacklistAnnotation, parsedClientHello, "blacklist") {
 		return false
 	}
 
-	for _, tlsBlacklistValue := range strings.Split(tlsBlacklist, ",") {
+	return len(whitelistAnnotation) == 0
+}
+
+func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ClientHelloParsed, listType string) bool {
+	if tlsFingerprintList == "" {
+		return false
+	}
+
+	for _, tlsBlacklistValue := range strings.Split(tlsFingerprintList, ",") {
 		if tlsBlacklistValue == parsedClientHello.Ja3 || tlsBlacklistValue == parsedClientHello.Ja3n || tlsBlacklistValue == algorithms.Ja3Digest(parsedClientHello.Ja3) {
 			log.Errorf("Ja3 fingerprint got blacklisted: %s", parsedClientHello.Ja3)
 			return true
