@@ -34,6 +34,10 @@ var testReverseProxyConfig = &Config{
 	TlsPort: 10102,
 }
 
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
+
 func TestHTTPRequest(t *testing.T) {
 	mockServerPort := freePort()
 	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
@@ -153,10 +157,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
-	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/add-ja3-header": "true",
-		"guardgress/add-ja4-header": "true",
-	}
+	ingressExactPathMock.Annotations = map[string]string{"guardgress/add-tls-fingerprint-header": "true"}
 	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
@@ -192,8 +193,19 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 	assert.NoError(t, err)
 	_ = res.Body.Close()
-	assert.Equal(t, len(res.Header.Get("X-Ja3-Fingerprint")) > 1, true)
-	assert.Equal(t, len(res.Header.Get("X-Ja4-Fingerprint")) > 1, true)
+
+	ja3TlsFingerprint := res.Header.Get("X-Ja3-Fingerprint")
+	ja4TlsFingerprint := res.Header.Get("X-Ja4-Fingerprint")
+	assert.True(t, len(ja3TlsFingerprint) > 1)
+	assert.True(t, len(ja4TlsFingerprint) > 1)
+
+	// test if the fingerprint block works
+	srv.RoutingTable.Ingresses.Items[0].Annotations = map[string]string{
+		"guardgress/tls-fingerprint-blacklist": fmt.Sprintf("%s,%s", ja3TlsFingerprint, ja4TlsFingerprint),
+	}
+	// should be forbidden
+	res, err = http.DefaultClient.Do(req)
+	assert.Equal(t, 403, res.StatusCode)
 }
 
 func TestUserAgentBlacklist(t *testing.T) {
@@ -211,7 +223,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
+		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
 	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
 
@@ -266,19 +278,192 @@ func TestUserAgentBlacklist(t *testing.T) {
 		assert.Equal(t, 403, res.StatusCode)
 	})
 
-	t.Run("test user_agent curl/7.64.3 should not be blocked", func(t *testing.T) {
+	t.Run("test user_agent curl/7.66.3 should not be blocked", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
 			nil,
 		)
-		req.Header.Add("User-Agent", "curl/7.64.3")
+		req.Header.Add("User-Agent", "curl/7.66.3")
 		assert.NoError(t, err)
 		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
 		assert.Equal(t, 200, res.StatusCode)
+	})
+}
+
+func TestUserAgentWhitelist(t *testing.T) {
+	mockServerPort := freePort()
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/user-agent-whitelist": "curl/7.64.*,curl/7.65.*",
+	}
+	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	// check if user agent block works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	t.Run("test user_agent curl/7.64.1 should not be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
+
+	t.Run("test user_agent curl/7.64.2 should not be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.2")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
+
+	t.Run("test user_agent curl/7.66.3 should be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.66.3")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	})
+}
+
+func TestUserAgentBlackAndWhitelist(t *testing.T) {
+	mockServerPort := freePort()
+	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
+	testReverseProxyConfig.Port = freePort()
+	testReverseProxyConfig.TlsPort = freePort()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	startMockServer(mockServerAddress, ctx)
+
+	srv := New(testReverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/user-agent-whitelist": "curl/7.64.*",
+		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
+	}
+	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, testReverseProxyConfig.Port)
+
+	// check if user agent block works
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	t.Run("test user_agent curl/7.64.1 should not be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
+
+	t.Run("test user_agent curl/7.64.2 should not be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.2")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+	})
+
+	t.Run("test user_agent curl/7.66.3 should be blocked", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.66.3")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
 	})
 }
 
@@ -598,7 +783,8 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
-		"guardgress/user-agent-blacklist": "curl/7.64.1,curl/7.64.2",
+		"guardgress/user-agent-whitelist": "curl/7.64.*",
+		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
 	ingressExactPathMock.Namespace = "test"
 	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
@@ -631,7 +817,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
-	t.Run("test if user agent block works with multiple ingresses (curl/7.64.1)", func(t *testing.T) {
+	t.Run("test if user agent block works with multiple ingresses (curl/7.64.1 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
@@ -643,10 +829,10 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+		assert.Equal(t, 200, res.StatusCode)
 	})
 
-	t.Run("test if user agent block works with multiple ingresses (curl/7.64.2)", func(t *testing.T) {
+	t.Run("test if user agent block works with multiple ingresses (curl/7.64.2 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
@@ -658,25 +844,25 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+		assert.Equal(t, 200, res.StatusCode)
 	})
 
-	t.Run("test if user agent block works with multiple ingresses (curl/7.64.3)", func(t *testing.T) {
+	t.Run("test if user agent block works with multiple ingresses (curl/7.66.3 should not work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
 			nil,
 		)
-		req.Header.Add("User-Agent", "curl/7.64.3")
+		req.Header.Add("User-Agent", "curl/7.66.3")
 		assert.NoError(t, err)
 		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, 403, res.StatusCode)
 	})
 
-	t.Run("test if user agent works on ingress without the block annotation /foo", func(t *testing.T) {
+	t.Run("test if user agent works on ingress without the block annotation /foo (curl/7.64.1 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/foo", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
@@ -691,7 +877,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 		assert.Equal(t, 200, res.StatusCode)
 	})
 
-	t.Run("test if user agent works on ingress without the block annotation /foo/bar", func(t *testing.T) {
+	t.Run("test if user agent works on ingress without the block annotation /foo/bar (curl/7.64.2 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/foo/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
@@ -706,7 +892,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 		assert.Equal(t, 200, res.StatusCode)
 	})
 
-	t.Run("test if user agent works on ingress without the block annotation /foo/bar/../bar/bar", func(t *testing.T) {
+	t.Run("test if user agent works on ingress without the block annotation /foo/bar/../bar/bar (curl/7.64.3 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
 			fmt.Sprintf("https://%s:%d/foo/bar/../bar/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),

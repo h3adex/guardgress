@@ -13,6 +13,10 @@ import (
 	"time"
 )
 
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
+
 func TestLimiterModule5H(t *testing.T) {
 	key := "127.0.0.1"
 	rateAnnotation := "5-H"

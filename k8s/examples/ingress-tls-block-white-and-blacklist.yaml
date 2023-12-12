@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Restricts access to specific tls-fingerprints; only allows 'd41d8cd98f00b204e9800998ecf8427a'.
+    "guardgress/tls-fingerprint-whitelist": "d41d8cd98f00b204e9800998ecf8427a"
+    # Ignores the blacklist if whitelist is active; blocks everything except d41d8cd98f00b204e9800998ecf8427a.
+    "guardgress/tls-fingerprint-blacklist": "d41d8cd98f00b204e9800998ecf8427a,t13d1715h2_5b57614c22b0_93c746dc12af"
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls

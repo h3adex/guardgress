@@ -1,21 +1,24 @@
 package annotations
 
 import (
+	"fmt"
+	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/models"
 	log "github.com/sirupsen/logrus"
+	"regexp"
 	"strings"
 )
 
 const (
-	Ja3Blacklist       = "guardgress/ja3-blacklist"
-	Ja4Blacklist       = "guardgress/ja4-blacklist"
-	UserAgentBlacklist = "guardgress/user-agent-blacklist"
-	AddJa3HeaderKey    = "guardgress/add-ja3-header"
-	AddJa4HeaderKey    = "guardgress/add-ja4-header"
-	ForceSSLRedirect   = "guardgress/force-ssl-redirect"
-	LimitIpWhitelist   = "guardgress/limit-ip-whitelist"
-	LimitPathWhitelist = "guardgress/limit-path-whitelist"
-	LimitRedisStore    = "guardgress/limit-redis-store-url"
+	UserAgentWhitelist      = "guardgress/user-agent-whitelist"
+	UserAgentBlacklist      = "guardgress/user-agent-blacklist"
+	TLSFingerprintWhitelist = "guardgress/tls-fingerprint-whitelist"
+	TLSFingerprintBlackList = "guardgress/tls-fingerprint-blacklist"
+	AddTLSFingerprintHeader = "guardgress/add-tls-fingerprint-header"
+	ForceSSLRedirect        = "guardgress/force-ssl-redirect"
+	LimitIpWhitelist        = "guardgress/limit-ip-whitelist"
+	LimitPathWhitelist      = "guardgress/limit-path-whitelist"
+	LimitRedisStore         = "guardgress/limit-redis-store-url"
 	// LimitPeriod uses the simplified format "<limit>-<period>"", with the given
 	// periods:
 	//
@@ -33,47 +36,69 @@ const (
 	LimitPeriod = "guardgress/limit-period"
 )
 
-func isHeaderEnabled(annotations map[string]string, key string) bool {
-	val, exists := annotations[key]
-	return exists && val == "true"
-}
+func IsUserAgentAllowed(annotations map[string]string, userAgent string) bool {
+	whitelistAnnotation := annotations[UserAgentWhitelist]
+	blacklistAnnotation := annotations[UserAgentBlacklist]
 
-func IsUserAgentBlacklisted(annotations map[string]string, userAgent string) bool {
-	if userAgentBlacklist, ok := annotations[UserAgentBlacklist]; ok {
-		for _, ua := range strings.Split(userAgentBlacklist, ",") {
-			if ua == userAgent {
-				log.Error("user agent got blacklisted: ", userAgent)
-				return true
-			}
-		}
+	if isUserAgentListed(whitelistAnnotation, userAgent, "whitelist") {
+		return true
 	}
 
+	if isUserAgentListed(blacklistAnnotation, userAgent, "blacklist") {
+		return false
+	}
+
+	return len(whitelistAnnotation) == 0
+}
+
+func isUserAgentListed(userAgentList string, userAgent string, listType string) bool {
+	if userAgentList == "" {
+		return false
+	}
+
+	for _, uaPattern := range strings.Split(userAgentList, ",") {
+		log.Debug(fmt.Sprintf("Matching user agent %s with pattern %s", userAgent, uaPattern))
+		matched, err := regexp.MatchString(uaPattern, userAgent)
+		if err != nil {
+			log.Errorf("Error matching user agent: %s", err)
+			continue
+		}
+		if matched {
+			log.Debugf("User agent got %s: %s", listType, userAgent)
+			return true
+		}
+	}
 	return false
 }
 
-func IsTlsFingerprintBlacklisted(
-	annotations map[string]string,
-	parsedClientHello models.ClientHelloParsed,
-) bool {
-	blacklistKeys := []string{Ja3Blacklist, Ja4Blacklist}
+func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ClientHelloParsed) bool {
+	whitelistAnnotation := annotations[TLSFingerprintWhitelist]
+	blacklistAnnotation := annotations[TLSFingerprintBlackList]
 
-	for _, key := range blacklistKeys {
-		if tlsBlacklist, ok := annotations[key]; ok {
-			for _, tlsHash := range strings.Split(tlsBlacklist, ",") {
-				if key == Ja3Blacklist {
-					if tlsHash == parsedClientHello.Ja3 || tlsHash == parsedClientHello.Ja3n {
-						log.Error("ja3 fingerprint got blacklisted: ", parsedClientHello.Ja3)
-						return true
-					}
-				}
+	if isTLSFingerprintListed(whitelistAnnotation, parsedClientHello, "whitelist") {
+		return true
+	}
 
-				if key == Ja4Blacklist {
-					if tlsHash == parsedClientHello.Ja4 || tlsHash == parsedClientHello.Ja4h {
-						log.Error("ja4 fingerprint got blacklisted: ", parsedClientHello.Ja3)
-						return true
-					}
-				}
-			}
+	if isTLSFingerprintListed(blacklistAnnotation, parsedClientHello, "blacklist") {
+		return false
+	}
+
+	return len(whitelistAnnotation) == 0
+}
+
+func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ClientHelloParsed, listType string) bool {
+	if tlsFingerprintList == "" {
+		return false
+	}
+
+	for _, tlsBlacklistValue := range strings.Split(tlsFingerprintList, ",") {
+		if tlsBlacklistValue == parsedClientHello.Ja3 || tlsBlacklistValue == parsedClientHello.Ja3n || tlsBlacklistValue == algorithms.Ja3Digest(parsedClientHello.Ja3) {
+			log.Errorf("Ja3 fingerprint got blacklisted: %s", parsedClientHello.Ja3)
+			return true
+		}
+		if tlsBlacklistValue == parsedClientHello.Ja4 || tlsBlacklistValue == parsedClientHello.Ja4h {
+			log.Errorf("Ja4 fingerprint got blacklisted: %s", parsedClientHello.Ja4)
+			return true
 		}
 	}
 
@@ -81,11 +106,14 @@ func IsTlsFingerprintBlacklisted(
 }
 
 func IsPathWhiteListed(annotations map[string]string, path string) bool {
-	if pathWhitelist, ok := annotations[LimitPathWhitelist]; ok {
-		for _, parsedPath := range strings.Split(pathWhitelist, ",") {
-			if strings.HasPrefix(path, parsedPath) {
-				return true
-			}
+	pathWhitelist, ok := annotations[LimitPathWhitelist]
+	if !ok {
+		return false
+	}
+
+	for _, parsedPath := range strings.Split(pathWhitelist, ",") {
+		if strings.HasPrefix(path, parsedPath) {
+			return true
 		}
 	}
 
@@ -93,21 +121,21 @@ func IsPathWhiteListed(annotations map[string]string, path string) bool {
 }
 
 func IsIpWhitelisted(annotations map[string]string, ip string) bool {
-	if ipWhitelist, ok := annotations[LimitIpWhitelist]; ok {
-		for _, parsedIp := range strings.Split(ipWhitelist, ",") {
-			if parsedIp == ip {
-				return true
-			}
+	ipWhitelist, ok := annotations[LimitIpWhitelist]
+	if !ok {
+		return false
+	}
+
+	for _, parsedIP := range strings.Split(ipWhitelist, ",") {
+		if parsedIP == ip {
+			return true
 		}
 	}
 
 	return false
 }
 
-func AddJa3Header(annotations map[string]string) bool {
-	return isHeaderEnabled(annotations, AddJa3HeaderKey)
-}
-
-func AddJa4Header(annotations map[string]string) bool {
-	return isHeaderEnabled(annotations, AddJa4HeaderKey)
+func IsTLSFingerprintHeaderRequested(annotations map[string]string) bool {
+	val, exists := annotations[AddTLSFingerprintHeader]
+	return exists && val == "true"
 }

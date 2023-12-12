@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gospider007/ja3"
 	"github.com/gospider007/requests"
+	"github.com/h3adex/guardgress/pkg/algorithms"
 )
 
 type ClientHelloParsed struct {
@@ -16,6 +17,7 @@ type ClientHelloParsed struct {
 	Tls                ja3.TlsData
 	Ja3                string
 	Ja3n               string
+	Ja3H               string
 	Ja4                string
 	Ja4h               string
 	/*TODO: any need?
@@ -36,6 +38,7 @@ func ParseClientHello(ctx *gin.Context) (ClientHelloParsed, error) {
 		Tls:                ja3.TlsData{},
 		Ja3:                "",
 		Ja3n:               "",
+		Ja3H:               "",
 		Ja4:                "",
 		Ja4h:               "",
 	}
@@ -44,6 +47,7 @@ func ParseClientHello(ctx *gin.Context) (ClientHelloParsed, error) {
 	if err == nil {
 		result.Tls = tlsData
 		result.Ja3, result.Ja3n = tlsData.Fp()
+		result.Ja3H = algorithms.Ja3Digest(result.Ja3)
 		result.Ja4 = tlsData.Ja4()
 		result.Ja4h = fpData.Ja4H(ctx.Request)
 	}

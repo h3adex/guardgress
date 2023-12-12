@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Restricts access to specific user-agents; only allows 'curl/7.64.*'.
+    "guardgress/user-agent-whitelist": "curl/7.64.*"
+    # Ignores the blacklist if whitelist is active; blocks 'curl/7.64.*' and 'curl/7.65.*'.
+    "guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*"
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls

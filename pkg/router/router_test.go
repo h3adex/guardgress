@@ -3,6 +3,7 @@ package router
 import (
 	"crypto/tls"
 	"github.com/h3adex/guardgress/pkg/mocks"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
 	v1 "k8s.io/api/networking/v1"
@@ -10,6 +11,10 @@ import (
 	"os"
 	"testing"
 )
+
+func init() {
+	log.SetLevel(log.DebugLevel)
+}
 
 func TestGetTlsCertificate(t *testing.T) {
 	routingTable := RoutingTable{

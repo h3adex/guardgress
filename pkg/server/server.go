@@ -8,7 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gospider007/net/http2"
 	"github.com/h3adex/fp"
-	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/annotations"
 	"github.com/h3adex/guardgress/pkg/models"
 	"github.com/h3adex/guardgress/pkg/router"
@@ -94,7 +93,7 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 
 	if log.GetLevel() == log.DebugLevel {
 		req, err := httputil.DumpRequest(ctx.Request, true)
-		if err != nil {
+		if err == nil {
 			log.Debug("request dump: ", string(req))
 		}
 		log.Debug("request ip: ", ctx.ClientIP())
@@ -124,25 +123,17 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 		return
 	}
 
-	if annotations.IsTlsFingerprintBlacklisted(parsedAnnotations, parsedClientHello) {
+	// checks user agent and tls fingerprint
+	if !isRequestAllowed(parsedAnnotations, parsedClientHello) {
 		ctx.Writer.WriteHeader(403)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
 	}
 
-	if annotations.IsUserAgentBlacklisted(parsedAnnotations, parsedClientHello.UserAgent) {
-		ctx.Writer.WriteHeader(403)
-		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
-		return
-	}
-
-	if annotations.AddJa3Header(parsedAnnotations) {
+	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
-		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", algorithms.Ja3Digest(parsedClientHello.Ja3))
+		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", parsedClientHello.Ja3H)
 		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
-	}
-
-	if annotations.AddJa4Header(parsedAnnotations) {
 		ctx.Request.Header.Add("X-Ja4-Fingerprint", parsedClientHello.Ja4)
 		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)
 	}
@@ -180,11 +171,10 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 	)
 
 	if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
-		log.Debug("redirecting to https: ", "https://"+ctx.Request.Host+ctx.Request.URL.String())
-		http.Redirect(ctx.Writer, ctx.Request,
-			"https://"+ctx.Request.Host+ctx.Request.URL.String(),
-			http.StatusMovedPermanently,
-		)
+		url := fmt.Sprintf("https://%s%s", ctx.Request.Host, ctx.Request.RequestURI)
+		log.Debug("request coming from host: ", ctx.Request.Host)
+		log.Debug("redirecting to https: ", url)
+		http.Redirect(ctx.Writer, ctx.Request, url, http.StatusMovedPermanently)
 		return
 	}
 
