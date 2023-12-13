@@ -4,18 +4,16 @@
 ![Docker](https://github.com/h3adex/guardgress/actions/workflows/publish-to-docker.yaml/badge.svg)
 
 Guardgress showcases a Web Application Firewall (WAF) integration within 
-a Kubernetes Ingress Controller. Notably, this project currently lacks 
-full support for all functionalities provided by the Ingress API Object.
+a Kubernetes Ingress Controller.
 
 ## Features
-- [x] Blacklist/Whitelist User-Agent Strings/Regular Expression
-- [x] Whitelist/Blacklist requests based on TLS fingerprint (Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h)
-- [x] Add JA4/JA3 fingerprint hash to the request header
-- [x] Rate Limit/Throttle Requests coming from a single IP Address
-- [x] Use Redis as backend to store rate limiting information
-- [x] Force SSL Redirection
-- [ ] Identify connections using proxies. Method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
-- [ ] Install as a Helm Chart
+- [x] User-Agent Filtering: Blacklist/Whitelist with strings or regular expressions.
+- [x] TLS Fingerprint Filtering: Whitelist/Blacklist requests based on ``Ja3, Ja3-Hash, Ja3n, Ja4, Ja4h`` fingerprints.
+- [x] Request Header Enrichment: Add ``Ja3, Ja3-Hash, Ja3n, Ja4, Ja4h`` tls-fingerprints to the request header.
+- [x] IP-Based Rate Limiting: Throttle requests originating from IP Addresses.
+- [x] Redis Integration: Utilize Redis as a backend to store and manage rate limiting information efficiently.
+- [x] SSL Redirection Enforcement: Ensure SSL connection by enforcing HTTPS through redirection.
+- [ ] Helm Chart Installation: Package the application as a Helm Chart for convenient and scalable deployment.
 
 ## Images
 - [ghcr.io/h3adex/guardgress:latest](https://github.com/h3adex/guardgress/pkgs/container/guardgress)
@@ -54,6 +52,7 @@ Concrete examples of these annotations can be found in [k8s/examples](k8s/exampl
 ## Known Limitations
 - Guardgress currently does not fully support certain functionalities provided by the Ingress API Object.
 - The existence of a healthz route might cause conflicts for users intending to reverse proxy to this route.
+- We ought to transition to Custom Resource Definitions (CRD) to store configuration information instead of relying solely on annotations. Presently, certain annotations, particularly those containing commas, aren't parsed accurately for user-agent configurations.
 
 ## Development
 ```sh
@@ -68,6 +67,10 @@ leveraging cert-manager for added support.
 
 Further information on how to set up my local test environment 
 can be found in [here](build/README.md).
+
+## Ideas
+Don't hesitate to open an issue or pull request with your suggestions or ideas
+- [ ] Proxy Connection Identification: Implement a method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18) to identify connections through proxies.
 
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.

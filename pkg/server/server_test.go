@@ -67,7 +67,7 @@ func TestHTTPRequest(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -119,7 +119,7 @@ func TestHTTPSRequest(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -173,7 +173,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -240,7 +240,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -326,7 +326,7 @@ func TestUserAgentWhitelist(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -413,7 +413,7 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -504,7 +504,7 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -576,7 +576,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -654,7 +654,7 @@ func TestRateLimit60PerMinute(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -731,7 +731,7 @@ func TestRateLimit60PerHour(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -810,7 +810,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -950,7 +950,7 @@ func TestHealthzRoute(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -1003,7 +1003,7 @@ func TestProxyDirectorParams(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)
@@ -1059,7 +1059,7 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)

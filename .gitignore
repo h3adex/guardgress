@@ -1,3 +1,4 @@
 .idea/
 bin/
-azure
+# Testing context behavior here
+cmd/server/main_test.go

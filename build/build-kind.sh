@@ -142,14 +142,14 @@ spec:
             httpGet:
               path: /healthz
               port: 81
-            initialDelaySeconds: 5
+            initialDelaySeconds: 2
             periodSeconds: 5
             timeoutSeconds: 5
           livenessProbe:
             httpGet:
               path: /healthz
               port: 81
-            initialDelaySeconds: 5
+            initialDelaySeconds: 2
             periodSeconds: 5
             timeoutSeconds: 5
           ports:
