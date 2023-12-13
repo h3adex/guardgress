@@ -35,6 +35,7 @@ func New(client kubernetes.Interface, updateServer func(payload Payload)) *Watch
 }
 
 func (w *Watcher) onChange() {
+	log.Debug("Updating routing table")
 	payload := Payload{TlsCertificates: map[string]*tls.Certificate{}}
 	ingresses, err := w.Client.NetworkingV1().Ingresses("").List(context.Background(), v12.ListOptions{})
 	if err != nil {
@@ -131,5 +132,6 @@ func (w *Watcher) Run(ctx context.Context) error {
 		wg.Done()
 	}()
 
+	log.Debug("Started all watchers")
 	return nil
 }

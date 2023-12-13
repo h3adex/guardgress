@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"github.com/caarlos0/env"
@@ -12,9 +13,9 @@ import (
 	"github.com/h3adex/guardgress/pkg/router"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"net/http"
 	"net/http/httputil"
-	"sync"
 )
 
 const (
@@ -47,28 +48,42 @@ func New(config *Config) *Server {
 	return s
 }
 
-func (s Server) Run() {
-	wg := sync.WaitGroup{}
+func (s Server) Run(ctx context.Context) error {
+	eg, ctx := errgroup.WithContext(ctx)
 
-	wg.Add(1)
-	go func() {
+	eg.Go(func() error {
 		log.Info("Starting HTTP-Server on ", s.Config.Port)
-		handle := gin.Default()
-		handle.Any("/*path", s.ServeHTTP)
-		err := http.ListenAndServe(fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port), handle)
-		if err != nil {
-			panic(err)
-		}
-	}()
+		handler := gin.Default()
+		handler.Any("/*path", s.ServeHTTP)
 
-	wg.Add(1)
-	go func() {
+		server := &http.Server{
+			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
+			Handler: handler,
+		}
+
+		go func() {
+			<-ctx.Done() // Wait for cancellation signal
+			log.Error("Context got cancelled, shutting down server")
+			_ = server.Shutdown(context.Background())
+		}()
+
+		err := server.ListenAndServe()
+		if err != nil {
+			log.Error("Error on http server: ", err.Error())
+			return err
+		}
+
+		return nil
+	})
+
+	eg.Go(func() error {
 		log.Info("Starting HTTPS-Server on ", s.Config.TlsPort)
-		handle := gin.Default()
-		handle.Any("/*path", s.ServeHttps)
+		handler := gin.Default()
+		handler.Any("/*path", s.ServeHttps)
+
 		err := fp.Server(
-			nil,
-			handle.Handler(),
+			ctx,
+			handler.Handler(),
 			fp.Option{
 				Addr: fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
 				GetCertificate: func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
@@ -76,11 +91,16 @@ func (s Server) Run() {
 				},
 			},
 		)
+
 		if err != nil {
-			panic(err)
+			log.Error("Error on https server: ", err.Error())
+			return err
 		}
-	}()
-	wg.Wait()
+
+		return nil
+	})
+
+	return eg.Wait()
 }
 
 func (s Server) ServeHttps(ctx *gin.Context) {

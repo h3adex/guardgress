@@ -67,7 +67,7 @@ func TestHTTPRequest(t *testing.T) {
 	}
 
 	go func() {
-		srv.Run(ctx)
+		_ = srv.Run(ctx)
 	}()
 
 	waitForServer(ctx, testReverseProxyConfig.Port)

@@ -68,16 +68,14 @@ spec:
         readinessProbe:
           httpGet:
             path: /healthz
-            port: 443
-            scheme: HTTPS
+            port: 80
           initialDelaySeconds: 2
           periodSeconds: 5
           timeoutSeconds: 5
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 443
-            scheme: HTTPS
+            port: 80
           initialDelaySeconds: 2
           periodSeconds: 5
           timeoutSeconds: 5

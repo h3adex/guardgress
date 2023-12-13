@@ -6,12 +6,12 @@ import (
 	"github.com/h3adex/guardgress/pkg/server"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 func init() {
@@ -32,41 +32,36 @@ func init() {
 }
 
 func main() {
-	wg := sync.WaitGroup{}
-	ctx := context.Background()
 	k8sClient, err := kubernetes.NewForConfig(getKubernetesConfig())
-
 	if err != nil {
-		log.Fatalln(err)
+		log.Panic(err)
 	}
 
 	config := &server.Config{}
-
-	if err := env.Parse(config); err != nil {
-		log.Fatalln(err)
+	if err = env.Parse(config); err != nil {
+		log.Panic(err)
 	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	eg, ctx := errgroup.WithContext(ctx)
 	srv := server.New(config)
 
-	w := watcher.New(k8sClient, func(routingTable watcher.Payload) {
-		srv.UpdateRoutingTable(routingTable)
+	eg.Go(func() error {
+		return srv.Run(ctx)
 	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		srv.Run()
-	}()
+	eg.Go(func() error {
+		return watcher.New(k8sClient, func(routingTable watcher.Payload) {
+			srv.UpdateRoutingTable(routingTable)
+		}).Run(ctx)
+	})
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		err := w.Run(ctx)
-		if err != nil {
-			return
-		}
-	}()
-
-	wg.Wait()
+	if err = eg.Wait(); err != nil {
+		log.Error("Error on watcher or server goroutine: ", err.Error())
+		log.Panic(err)
+	}
 }
 
 func getKubernetesConfig() *rest.Config {
@@ -81,8 +76,10 @@ func getKubernetesConfig() *rest.Config {
 }
 
 func getHomeDir() string {
-	if h := os.Getenv("HOME"); h != "" {
-		return h
+	if home := os.Getenv("HOME"); home != "" {
+		return home
 	}
-	return os.Getenv("USERPROFILE") // windows
+
+	// windows
+	return os.Getenv("USERPROFILE")
 }
