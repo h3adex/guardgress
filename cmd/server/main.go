@@ -53,9 +53,12 @@ func main() {
 	})
 
 	eg.Go(func() error {
-		return watcher.New(k8sClient, func(routingTable watcher.Payload) {
-			srv.UpdateRoutingTable(routingTable)
-		}).Run(ctx)
+		return watcher.New(
+			k8sClient,
+			func(routingTable watcher.Payload) {
+				srv.UpdateRoutingTable(routingTable)
+			},
+		).Run(ctx)
 	})
 
 	if err = eg.Wait(); err != nil {
