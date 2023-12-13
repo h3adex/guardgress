@@ -1,4 +1,4 @@
-package limitHandler
+package limithandler
 
 import (
 	"context"

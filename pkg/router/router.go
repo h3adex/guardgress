@@ -3,7 +3,7 @@ package router
 import (
 	"crypto/tls"
 	"fmt"
-	"github.com/h3adex/guardgress/pkg/limitHandler"
+	"github.com/h3adex/guardgress/pkg/limithandler"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	"github.com/ulule/limiter/v3"
 	v1 "k8s.io/api/networking/v1"
@@ -12,6 +12,12 @@ import (
 	"regexp"
 	"strings"
 )
+
+type RoutingTableInterface interface {
+	Update(payload watcher.Payload)
+	GetBackend(host, uri, ip string) (*url.URL, map[string]string, RoutingError)
+	GetTlsCertificate(sni string) (*tls.Certificate, error)
+}
 
 type RoutingTable struct {
 	Ingresses       *v1.IngressList
@@ -49,7 +55,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 				// No PathType annotation should work as PathTypeExact
 				if path.PathType == nil || *path.PathType == pathTypeExact {
 					if path.Path == uri {
-						if limitHandler.IsLimited(
+						if limithandler.IsLimited(
 							r.IngressLimiters[index],
 							ingress.Annotations,
 							ip,
@@ -80,7 +86,7 @@ func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]st
 
 				if (path.PathType != nil) && (*path.PathType == pathTypePrefix || *path.PathType == pathTypeImplementationSpecific) {
 					if strings.HasPrefix(uri, path.Path) {
-						if limitHandler.IsLimited(
+						if limithandler.IsLimited(
 							r.IngressLimiters[index],
 							ingress.Annotations,
 							ip,

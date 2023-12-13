@@ -9,7 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"github.com/h3adex/guardgress/pkg/limitHandler"
+	"github.com/h3adex/guardgress/pkg/limithandler"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
 	log "github.com/sirupsen/logrus"
@@ -52,7 +52,7 @@ func TestHTTPRequest(t *testing.T) {
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -104,7 +104,7 @@ func TestHTTPSRequest(t *testing.T) {
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -158,7 +158,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Annotations = map[string]string{"guardgress/add-tls-fingerprint-header": "true"}
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -225,7 +225,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -311,7 +311,7 @@ func TestUserAgentWhitelist(t *testing.T) {
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-whitelist": "curl/7.64.*,curl/7.65.*",
 	}
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -398,7 +398,7 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 		"guardgress/user-agent-whitelist": "curl/7.64.*",
 		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -489,7 +489,7 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 		// whitelist healthz path
 		"guardgress/limit-path-whitelist": "/foo,/.well-known",
 	}
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -554,13 +554,13 @@ func TestRateLimit10PerSecond(t *testing.T) {
 		// rate limited after more than 10 requests per second
 		"guardgress/limit-period": fmt.Sprintf("%d-S", requestLimit),
 	}
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
-	ingressLimiterPathPrefix := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -632,13 +632,13 @@ func TestRateLimit60PerMinute(t *testing.T) {
 		// rate limited after more than 60 requests per hour
 		"guardgress/limit-period": fmt.Sprintf("%d-M", requestLimit),
 	}
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
-	ingressLimiterPathPrefix := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -709,13 +709,13 @@ func TestRateLimit60PerHour(t *testing.T) {
 		// rate limited after more than 60 requests per hour
 		"guardgress/limit-period": fmt.Sprintf("%d-H", requestLimit),
 	}
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
-	ingressLimiterPathPrefix := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -787,14 +787,14 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
 	ingressExactPathMock.Namespace = "test"
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
 	ingressExactPathMock.Namespace = "test"
-	ingressLimiterPathPrefix := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -984,7 +984,7 @@ func TestProxyDirectorParams(t *testing.T) {
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Spec.Rules[0].Host = "www.guardgress.com"
-	ingressLimiterPathExact := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	startMockServer(mockServerAddress, ctx)
 
@@ -1044,7 +1044,7 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 		"guardgress/force-ssl-redirect": "true",
 	}
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
-	ingressLimiter := limitHandler.GetIngressLimiter(ingressExactPathMock)
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{

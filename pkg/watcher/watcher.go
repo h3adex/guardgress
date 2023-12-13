@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"github.com/bep/debounce"
-	"github.com/h3adex/guardgress/pkg/limitHandler"
+	"github.com/h3adex/guardgress/pkg/limithandler"
 	log "github.com/sirupsen/logrus"
 	"github.com/ulule/limiter/v3"
 	"k8s.io/api/networking/v1"
@@ -27,7 +27,10 @@ type Watcher struct {
 	UpdateServer func(payload Payload)
 }
 
-func New(client kubernetes.Interface, updateServer func(payload Payload)) *Watcher {
+func New(
+	client kubernetes.Interface,
+	updateServer func(payload Payload),
+) *Watcher {
 	return &Watcher{
 		Client:       client,
 		UpdateServer: updateServer,
@@ -48,7 +51,7 @@ func (w *Watcher) onChange() {
 			continue
 		}
 
-		ingressLimiters := limitHandler.GetIngressLimiter(ingress)
+		ingressLimiters := limithandler.GetIngressLimiter(ingress)
 		payload.IngressLimiters = append(payload.IngressLimiters, ingressLimiters)
 
 		for _, tlsCert := range ingress.Spec.TLS {
