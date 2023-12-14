@@ -5,4 +5,4 @@ type: application
 # chart version
 version: 0.0.1
 # image version
-appVersion: "1.0.0"
+appVersion: "1.0.0-alpha"

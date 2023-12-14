@@ -3,11 +3,9 @@ replicaCount: 1
 image:
   repository: ghcr.io/h3adex/guardgress
   pullPolicy: IfNotPresent
-  # TODO: Provide specific version
-  tag: "latest"
+  tag: "1.0.0-alpha"
 
-imagePullSecrets:
-  - name: "github-regcred"
+imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
