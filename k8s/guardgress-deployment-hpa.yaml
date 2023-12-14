@@ -1,13 +1,27 @@
-apiVersion: autoscaling/v1
+apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: guardgress-hpa
+  namespace: guardgress
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: guardgress
+    name: guardgress-ingress-controller
   maxReplicas: 10
   minReplicas: 1
-  targetCPUUtilizationPercentage: 50
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 80
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
 
