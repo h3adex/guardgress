@@ -2,3 +2,6 @@
 bin/
 # Testing context behavior here
 cmd/server/main_test.go
+# Testing helm
+# helm install guardgress  --dry-run . > tmp.yaml
+helm/guardgress/tmp.yaml

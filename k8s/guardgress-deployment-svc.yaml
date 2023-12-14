@@ -1,12 +1,19 @@
 apiVersion: v1
+kind: Namespace
+metadata:
+  name: guardgress
+---
+apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: guardgress-sa
+  namespace: guardgress
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: guardgress-cr
+  namespace: guardgress
 rules:
 - apiGroups: [""]
   resources: ["services","secrets"]
@@ -26,13 +33,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: guardgress-sa
-  namespace: default
+  namespace: guardgress
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
     app: guardgress-ingress-controller
+  namespace: guardgress
   name: guardgress-ingress-controller
 spec:
   replicas: 1
@@ -97,8 +105,9 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app: guardgress-svc
-  name: guardgress-svc
+    app: guardgress-ingress-controller-svc
+  namespace: guardgress
+  name: guardgress-ingress-controller-svc
 spec:
   type: LoadBalancer
   # This is needed if you want to use the limit-ip annotation
@@ -115,4 +124,3 @@ spec:
     targetPort: 80
   selector:
     app: guardgress-ingress-controller
-

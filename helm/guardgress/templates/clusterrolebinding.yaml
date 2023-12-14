@@ -1,0 +1,18 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "guardgress.clusterRoleBindingName" . }}
+  labels:
+      {{- include "guardgress.labels" . | nindent 4 }}
+    {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "guardgress.clusterRole" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "guardgress.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}

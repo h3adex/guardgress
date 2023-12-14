@@ -13,10 +13,7 @@ a Kubernetes Ingress Controller.
 - [x] IP-Based Rate Limiting: Throttle requests originating from IP Addresses.
 - [x] Redis Integration: Utilize Redis as a backend to store and manage rate limiting information efficiently.
 - [x] SSL Redirection Enforcement: Ensure SSL connection by enforcing HTTPS through redirection.
-- [ ] Helm Chart Installation: Package the application as a Helm Chart for convenient and scalable deployment.
-
-## Images
-- [ghcr.io/h3adex/guardgress:latest](https://github.com/h3adex/guardgress/pkgs/container/guardgress)
+- [x] Helm Chart Installation: Package the application as a Helm Chart for convenient and scalable deployment.
 
 ## Usage
 To block requests, utilize specific [annotations](pkg/annotations/annotations.go) on the Ingress API Object:
@@ -48,6 +45,29 @@ If you want to use the limit-period annotation, make sure to set externalTraffic
 Otherwise, the rate limiting will not work as intended. More Information can be found here: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
 
 Concrete examples of these annotations can be found in [k8s/examples](k8s/examples).
+
+## Installation
+
+### With Helm
+```shell
+git clone https://github.com/h3adex/guardgress
+cd guardgress/helm/guardgress
+# change values.yaml according to your configuration
+# helm install guardgress --namespace guardgress --create-namespace --dry-run . # dry run
+helm install guardgress --namespace guardgress --create-namespace .
+```
+
+### With K8s Manifests
+```shell
+git clone https://github.com/h3adex/guardgress
+# Creates Namespace,SA,CRB,CR,Deployment,Service(LoadBalancer)
+kubectl apply -f k8s/guardgress-deployment-svc.yaml
+# Creates HPA
+kubectl apply -f k8s/guardgress-deployment-hpa.yaml
+```
+
+Once installed, you can create ingress objects with the annotations described above. Examples
+are located here: [k8s/examples](k8s/examples).
 
 ## Known Limitations
 - Guardgress currently does not fully support certain functionalities provided by the Ingress API Object.
