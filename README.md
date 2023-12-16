@@ -2,6 +2,8 @@
 ![Tests](https://github.com/h3adex/guardgress/actions/workflows/test-go-code.yaml/badge.svg)
 ![Vulnerability Scan](https://github.com/h3adex/guardgress/actions/workflows/vulnerability-scan.yaml/badge.svg)
 ![Docker](https://github.com/h3adex/guardgress/actions/workflows/publish-to-docker.yaml/badge.svg)
+![Go Report Card](https://goreportcard.com/badge/github.com/h3adex/guardgress)
+![Go Version](https://img.shields.io/badge/go-1.21.5-blue)
 
 Guardgress showcases a Web Application Firewall (WAF) integration within 
 a Kubernetes Ingress Controller.
