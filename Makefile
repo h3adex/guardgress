@@ -1,7 +1,7 @@
 .PHONY: azure kind dev
 
 azure:
-	sh build/build-azure.sh
+	@sh build/build-azure.sh
 
 
 kind:
@@ -10,8 +10,8 @@ kind:
 dev:
 	@if [ "$(target)" = "azure" ]; then \
         $(MAKE) azure; \
-    elif [ "$(target)" = "kind" ]; then \
+	elif [ "$(target)" = "kind" ]; then \
         $(MAKE) kind; \
-    else \
+	else \
         echo "Please specify a valid target: azure or kind"; \
-    fi
+	fi
