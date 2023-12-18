@@ -23,7 +23,7 @@ func TestWatcherDetectChanges(t *testing.T) {
 			client,
 			func(payload Payload) {
 				t.Log("Update called")
-				t.Log(payload)
+				assert.True(t, payload.Ingresses.Items[0].Name == "test-ingress")
 				updateCalled <- struct{}{}
 			},
 		)
@@ -37,7 +37,14 @@ func TestWatcherDetectChanges(t *testing.T) {
 			}
 		}()
 
-		ingress, err := client.NetworkingV1().Ingresses("default").Create(context.Background(), &v1.Ingress{}, v13.CreateOptions{})
+		ingress, err := client.NetworkingV1().Ingresses("default").Create(context.Background(), &v1.Ingress{
+			TypeMeta: v13.TypeMeta{},
+			ObjectMeta: v13.ObjectMeta{
+				Name: "test-ingress",
+			},
+			Spec:   v1.IngressSpec{},
+			Status: v1.IngressStatus{},
+		}, v13.CreateOptions{})
 		if err != nil {
 			t.Errorf("Error creating ingress: %v", err)
 		}

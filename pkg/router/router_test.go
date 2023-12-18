@@ -3,6 +3,7 @@ package router
 import (
 	"crypto/tls"
 	"github.com/h3adex/guardgress/pkg/mocks"
+	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
@@ -14,6 +15,22 @@ import (
 
 func init() {
 	log.SetLevel(log.DebugLevel)
+}
+
+func TestUpdateRoutingTable(t *testing.T) {
+	routingTable := RoutingTable{
+		Ingresses:       &v1.IngressList{},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
+	}
+
+	routingTable.Update(watcher.Payload{
+		Ingresses:       &v1.IngressList{},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil, nil, nil, nil},
+	})
+
+	assert.Equal(t, len(routingTable.IngressLimiters), 4)
 }
 
 func TestGetTlsCertificate(t *testing.T) {
@@ -76,6 +93,35 @@ func TestGetBackendExactPathType(t *testing.T) {
 	t.Run("test exact path type which is not present in mock", func(t *testing.T) {
 		_, _, err := routingTable.GetBackend("www.guardgress.com", "/abc", "127.0.0.1")
 		assert.Error(t, err.Error)
+	})
+}
+
+func TestWildCardHostsExactPathType(t *testing.T) {
+	mock := mocks.IngressExactPathTypeMock()
+	mock.Spec.Rules[0].Host = "*.guardgress.com"
+
+	routingTable := RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				mock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil},
+	}
+
+	t.Run("test exact path type which is present in mock with wildcard host", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("test.guardgress.com", "/", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1.default.svc.cluster.local:10100")
+	})
+
+	t.Run("test exact path type which is not present in mock", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("dev.test.guardgress.com", "/", "127.0.0.1")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "127.0.0.1.default.svc.cluster.local:10100")
 	})
 }
 
@@ -444,8 +490,8 @@ func TestGetBackendWithMultipleIngressesInDifferentNamespaces(t *testing.T) {
 }
 
 func TestGetBackendJenkinsMock(t *testing.T) {
-	pathType := v1.PathTypeImplementationSpecific
-	mock := v1.Ingress{
+	pathTypeImplementationSpecific := v1.PathTypeImplementationSpecific
+	jenkinsMock := v1.Ingress{
 		TypeMeta: v12.TypeMeta{},
 		ObjectMeta: v12.ObjectMeta{
 			Namespace: "default",
@@ -461,7 +507,7 @@ func TestGetBackendJenkinsMock(t *testing.T) {
 						HTTP: &v1.HTTPIngressRuleValue{
 							Paths: []v1.HTTPIngressPath{
 								{
-									PathType: &pathType,
+									PathType: &pathTypeImplementationSpecific,
 									Backend: v1.IngressBackend{
 										Service: &v1.IngressServiceBackend{
 											Name: "jenkins",
@@ -475,7 +521,7 @@ func TestGetBackendJenkinsMock(t *testing.T) {
 								},
 								{
 									Path:     "/wsagents",
-									PathType: &pathType,
+									PathType: &pathTypeImplementationSpecific,
 									Backend: v1.IngressBackend{
 										Service: &v1.IngressServiceBackend{
 											Name: "jenkins-wssocket",
@@ -489,7 +535,7 @@ func TestGetBackendJenkinsMock(t *testing.T) {
 								},
 								{
 									Path:     "/github-webhook/",
-									PathType: &pathType,
+									PathType: &pathTypeImplementationSpecific,
 									Backend: v1.IngressBackend{
 										Service: &v1.IngressServiceBackend{
 											Name: "jenkins-webhook",
@@ -514,7 +560,7 @@ func TestGetBackendJenkinsMock(t *testing.T) {
 		Ingresses: &v1.IngressList{
 			TypeMeta: v12.TypeMeta{},
 			ListMeta: v12.ListMeta{},
-			Items:    []v1.Ingress{mock},
+			Items:    []v1.Ingress{jenkinsMock},
 		},
 		TlsCertificates: mocks.TlsCertificatesMock(),
 		IngressLimiters: []*limiter.Limiter{nil},
