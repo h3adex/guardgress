@@ -52,11 +52,9 @@ Concrete examples of these annotations can be found in [k8s/examples](k8s/exampl
 
 ### With Helm
 ```shell
-git clone https://github.com/h3adex/guardgress
-cd guardgress/helm/guardgress
-# change values.yaml according to your configuration
-# helm install guardgress --namespace guardgress --create-namespace --dry-run . # dry run
-helm install guardgress --namespace guardgress --create-namespace .
+helm repo add guardgress https://h3adex.github.io/guardgress
+helm repo update
+helm install guardgress guardgress/guardgress-ingress-controller --namespace guardgress --create-namespace
 ```
 
 ### With K8s Manifests
