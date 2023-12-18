@@ -176,6 +176,74 @@ func IngressNoPathTypeMock() v1.Ingress {
 	}
 }
 
+func IngressJenkinsMock() v1.Ingress {
+	return v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "jenkins.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									PathType: &pathTypeImplementationSpecific,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+								{
+									Path:     "/wsagents",
+									PathType: &pathTypeImplementationSpecific,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins-wssocket",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+								{
+									Path:     "/github-webhook/",
+									PathType: &pathTypeImplementationSpecific,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins-webhook",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+
+}
+
 func SelfSignedCertMock() (*tls.Certificate, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {

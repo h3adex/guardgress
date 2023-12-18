@@ -443,6 +443,109 @@ func TestGetBackendWithMultipleIngressesInDifferentNamespaces(t *testing.T) {
 	})
 }
 
+func TestGetBackendJenkinsMock(t *testing.T) {
+	pathType := v1.PathTypeImplementationSpecific
+	mock := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "jenkins.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									PathType: &pathType,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+								{
+									Path:     "/wsagents",
+									PathType: &pathType,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins-wssocket",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+								{
+									Path:     "/github-webhook/",
+									PathType: &pathType,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "jenkins-webhook",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+
+	routingTable := RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items:    []v1.Ingress{mock},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil},
+	}
+
+	t.Run("test path type implementation specific for jenkins", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("jenkins.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "jenkins.default.svc.cluster.local:8080")
+	})
+
+	t.Run("test path type implementation specific for jenkins /job/system-tests/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("jenkins.guardgress.com", "/job/system-tests/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "jenkins.default.svc.cluster.local:8080")
+	})
+
+	t.Run("test path type implementation specific for jenkins /wsagents/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("jenkins.guardgress.com", "/wsagents/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "jenkins-wssocket.default.svc.cluster.local:8080")
+	})
+
+	t.Run("test path type implementation specific for jenkins /github-webhook/", func(t *testing.T) {
+		url, _, err := routingTable.GetBackend("jenkins.guardgress.com", "/github-webhook/", "")
+		assert.NoError(t, err.Error)
+		assert.Equal(t, url.Host, "jenkins-webhook.default.svc.cluster.local:8080")
+	})
+
+}
+
 func TestCertManagerImplementation(t *testing.T) {
 	mock := mocks.IngressPathTypeImplementationSpecificTypeMock()
 	mock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = 8089
