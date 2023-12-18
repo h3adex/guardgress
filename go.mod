@@ -6,9 +6,9 @@ require (
 	github.com/bep/debounce v1.2.1
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
-	github.com/gospider007/ja3 v0.0.0-20231216073617-0c1a87228845
+	github.com/gospider007/ja3 v0.0.0-20231218052956-f5775dfbd8c3
 	github.com/gospider007/net v0.0.0-20231215081728-064725ce355a
-	github.com/gospider007/requests v0.0.0-20231216082621-948b2a5a9ead
+	github.com/gospider007/requests v0.0.0-20231218053100-942d54c39da1
 	github.com/h3adex/fp v0.0.0-20231121110146-224beb073d4b
 	github.com/redis/go-redis/v9 v9.3.0
 	github.com/sirupsen/logrus v1.9.3
@@ -74,17 +74,17 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/pelletier/go-toml/v2 v2.1.0 // indirect
+	github.com/pelletier/go-toml/v2 v2.1.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/quic-go/quic-go v0.40.1 // indirect
-	github.com/refraction-networking/utls v1.5.5-0.20231216063210-c4ba3ff3af8d // indirect
+	github.com/refraction-networking/utls v1.6.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/tidwall/gjson v1.17.0 // indirect
 	github.com/tidwall/match v1.1.1 // indirect
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
-	github.com/ugorji/go/codec v1.2.11 // indirect
+	github.com/ugorji/go/codec v1.2.12 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.13.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
