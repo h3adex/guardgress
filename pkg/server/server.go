@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
-	"github.com/gospider007/net/http2"
 	"github.com/h3adex/fp"
 	"github.com/h3adex/guardgress/pkg/annotations"
 	"github.com/h3adex/guardgress/pkg/models"
@@ -160,12 +159,6 @@ func (s Server) ServeHttps(ctx *gin.Context) {
 	log.Debug("proxying https request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
 
-	if svcUrl.Scheme == "https" {
-		proxy.Transport = &http2.Transport{
-			AllowHTTP: true,
-		}
-	}
-
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
 		req.Host = ctx.Request.Host
@@ -205,12 +198,6 @@ func (s Server) ServeHTTP(ctx *gin.Context) {
 
 	log.Debug("proxying http request to: ", svcUrl)
 	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
-
-	if svcUrl.Scheme == "https" {
-		proxy.Transport = &http2.Transport{
-			AllowHTTP: true,
-		}
-	}
 
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
