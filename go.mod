@@ -7,7 +7,6 @@ require (
 	github.com/caarlos0/env v3.5.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gospider007/ja3 v0.0.0-20231218052956-f5775dfbd8c3
-	github.com/gospider007/net v0.0.0-20231215081728-064725ce355a
 	github.com/gospider007/requests v0.0.0-20231218053100-942d54c39da1
 	github.com/h3adex/fp v0.0.0-20231121110146-224beb073d4b
 	github.com/redis/go-redis/v9 v9.3.0
@@ -35,7 +34,6 @@ require (
 	github.com/emicklei/go-restful/v3 v3.11.0 // indirect
 	github.com/evanphx/json-patch v4.12.0+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
-	github.com/gaukas/godicttls v0.0.4 // indirect
 	github.com/gin-contrib/sse v0.1.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.6 // indirect
@@ -57,6 +55,7 @@ require (
 	github.com/gospider007/gson v0.0.0-20231215083934-e7762897c4db // indirect
 	github.com/gospider007/gtls v0.0.0-20231215082710-ea089e961bcc // indirect
 	github.com/gospider007/kinds v0.0.0-20231024093643-7a4424f2d30e // indirect
+	github.com/gospider007/net v0.0.0-20231215081728-064725ce355a // indirect
 	github.com/gospider007/re v0.0.0-20231024115818-adfd03636256 // indirect
 	github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198 // indirect
 	github.com/gospider007/websocket v0.0.0-20231215083826-2227da2a2a13 // indirect
@@ -90,7 +89,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/arch v0.6.0 // indirect
-	golang.org/x/crypto v0.16.0 // indirect
+	golang.org/x/crypto v0.17.0 // indirect
 	golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 // indirect
 	golang.org/x/image v0.14.0 // indirect
 	golang.org/x/mod v0.14.0 // indirect
