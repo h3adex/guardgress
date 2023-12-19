@@ -13,8 +13,10 @@ import (
 	"time"
 )
 
+var nginxIngressClassName = "nginx"
+
 func TestWatcherDetectChanges(t *testing.T) {
-	t.Run("test change detected on ingress resources in cluster", func(t *testing.T) {
+	t.Run("test change detected on ingress resources in cluster with ingressClassName guardgress", func(t *testing.T) {
 		updateCalled := make(chan struct{})
 		defer close(updateCalled)
 
@@ -42,7 +44,97 @@ func TestWatcherDetectChanges(t *testing.T) {
 			ObjectMeta: v13.ObjectMeta{
 				Name: "test-ingress",
 			},
-			Spec:   v1.IngressSpec{},
+			Spec: v1.IngressSpec{
+				IngressClassName: &ingressClassName,
+			},
+			Status: v1.IngressStatus{},
+		}, v13.CreateOptions{})
+		if err != nil {
+			t.Errorf("Error creating ingress: %v", err)
+		}
+
+		select {
+		case <-updateCalled:
+			t.Logf("Update called after creating ingress: %s", ingress.Name)
+		case <-time.After(5 * time.Second): // Adjust the timeout according to your test scenario
+			t.Error("Update not triggered within the expected time")
+		}
+	})
+
+	t.Run("test change detected on ingress resources in cluster without ingressClassName", func(t *testing.T) {
+		updateCalled := make(chan struct{})
+		defer close(updateCalled)
+
+		client := testClient.NewSimpleClientset()
+		watcher := New(
+			client,
+			func(payload Payload) {
+				t.Log("Update called")
+				assert.True(t, payload.Ingresses.Items[0].Name == "test-ingress")
+				updateCalled <- struct{}{}
+			},
+		)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			if err := watcher.Run(ctx); err != nil {
+				t.Errorf("Watcher Run function error: %v", err)
+			}
+		}()
+
+		ingress, err := client.NetworkingV1().Ingresses("default").Create(context.Background(), &v1.Ingress{
+			TypeMeta: v13.TypeMeta{},
+			ObjectMeta: v13.ObjectMeta{
+				Name: "test-ingress",
+			},
+			Status: v1.IngressStatus{},
+		}, v13.CreateOptions{})
+		if err != nil {
+			t.Errorf("Error creating ingress: %v", err)
+		}
+
+		select {
+		case <-updateCalled:
+			t.Logf("Update called after creating ingress: %s", ingress.Name)
+		case <-time.After(5 * time.Second): // Adjust the timeout according to your test scenario
+			t.Error("Update not triggered within the expected time")
+		}
+	})
+
+	t.Run("test change detected on ingress resources in cluster but with false ingressClassName", func(t *testing.T) {
+		updateCalled := make(chan struct{})
+		defer close(updateCalled)
+
+		client := testClient.NewSimpleClientset()
+		watcher := New(
+			client,
+			func(payload Payload) {
+				t.Log("Update called")
+				// ingress should not be in the payload since it has a different className
+				assert.True(t, len(payload.Ingresses.Items) == 0)
+				updateCalled <- struct{}{}
+			},
+		)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		go func() {
+			if err := watcher.Run(ctx); err != nil {
+				t.Errorf("Watcher Run function error: %v", err)
+			}
+		}()
+
+		ingress, err := client.NetworkingV1().Ingresses("default").Create(context.Background(), &v1.Ingress{
+			TypeMeta: v13.TypeMeta{},
+			ObjectMeta: v13.ObjectMeta{
+				Name: "test-ingress",
+			},
+			Spec: v1.IngressSpec{
+				IngressClassName: &nginxIngressClassName,
+			},
 			Status: v1.IngressStatus{},
 		}, v13.CreateOptions{})
 		if err != nil {

@@ -16,6 +16,8 @@ import (
 	"time"
 )
 
+var ingressClassName = "guardgress"
+
 type Payload struct {
 	Ingresses       *v1.IngressList
 	TlsCertificates map[string]*tls.Certificate
@@ -39,12 +41,16 @@ func New(
 
 func (w *Watcher) onChange() {
 	log.Debug("Updating routing table")
-	payload := Payload{TlsCertificates: map[string]*tls.Certificate{}}
-	ingresses, err := w.Client.NetworkingV1().Ingresses("").List(context.Background(), v12.ListOptions{})
+
+	ingresses, err := listIngresses(w.Client)
 	if err != nil {
 		log.Error("unable to get k8s ingresses: ", err.Error())
 	}
-	payload.Ingresses = ingresses
+
+	payload := Payload{
+		TlsCertificates: map[string]*tls.Certificate{},
+		Ingresses:       ingresses,
+	}
 
 	for _, ingress := range ingresses.Items {
 		if ingress.Spec.TLS == nil {
@@ -137,4 +143,24 @@ func (w *Watcher) Run(ctx context.Context) error {
 
 	log.Debug("Started all watchers")
 	return nil
+}
+
+// listIngresses returns a list of ingresses filtered by ingressClassName
+func listIngresses(client kubernetes.Interface) (*v1.IngressList, error) {
+	// List all ingresses
+	allIngresses, err := client.NetworkingV1().Ingresses("").List(context.TODO(), v12.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	filteredIngresses := &v1.IngressList{}
+
+	// Filter ingresses based on ingressClassName
+	for _, ingress := range allIngresses.Items {
+		if ingress.Spec.IngressClassName == nil || *ingress.Spec.IngressClassName == ingressClassName {
+			filteredIngresses.Items = append(filteredIngresses.Items, ingress)
+		}
+	}
+
+	return filteredIngresses, nil
 }
