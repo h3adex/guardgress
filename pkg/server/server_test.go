@@ -7,8 +7,8 @@ package server
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/h3adex/guardgress/pkg/limithandler"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
@@ -28,30 +28,30 @@ import (
 )
 
 var mockServerResponse = "mock-svc"
-var testReverseProxyConfig = &Config{
-	Host:    "127.0.0.1",
-	Port:    10101,
-	TlsPort: 10102,
+
+type MockServerConfig struct {
+	Host string
+	Port int
 }
 
 func init() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
+
+	if log.GetLevel() != log.DebugLevel {
+		gin.SetMode(gin.ReleaseMode)
+	}
 }
 
 func TestHTTPRequest(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
@@ -67,15 +67,16 @@ func TestHTTPRequest(t *testing.T) {
 	}
 
 	go func() {
-		_ = srv.Run(ctx)
+		err := srv.Run(ctx)
+		assert.NoError(t, err)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if reverse proxy works for http request
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("http://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.Port),
+		fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
 		nil,
 	)
 	assert.NoError(t, err)
@@ -86,24 +87,21 @@ func TestHTTPRequest(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 	bs, err := io.ReadAll(res.Body)
 	assert.NoError(t, err)
-	_ = res.Body.Close()
+	err = res.Body.Close()
+	assert.NoError(t, err)
 	assert.Equal(t, mockServerResponse, string(bs))
 }
 
 func TestHTTPSRequest(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
@@ -122,13 +120,13 @@ func TestHTTPSRequest(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if reverse proxy works for https request
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+		fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 		nil,
 	)
 	assert.NoError(t, err)
@@ -139,24 +137,21 @@ func TestHTTPSRequest(t *testing.T) {
 	assert.Equal(t, 200, res.StatusCode)
 	bs, err := io.ReadAll(res.Body)
 	assert.NoError(t, err)
-	_ = res.Body.Close()
+	err = res.Body.Close()
+	assert.NoError(t, err)
 	assert.Equal(t, mockServerResponse, string(bs))
 }
 
 func TestTlsFingerprintingAddHeader(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Annotations = map[string]string{"guardgress/add-tls-fingerprint-header": "true"}
 	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
@@ -176,13 +171,13 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if reverse proxy returns tls fingerprints
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+		fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 		nil,
 	)
 	assert.NoError(t, err)
@@ -192,7 +187,8 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, 200, res.StatusCode)
 	assert.NoError(t, err)
-	_ = res.Body.Close()
+	err = res.Body.Close()
+	assert.NoError(t, err)
 
 	ja3TlsFingerprint := res.Header.Get("X-Ja3-Fingerprint")
 	ja4TlsFingerprint := res.Header.Get("X-Ja4-Fingerprint")
@@ -205,23 +201,20 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	}
 	// should be forbidden
 	res, err = http.DefaultClient.Do(req)
+	assert.NoError(t, err)
 	assert.Equal(t, 403, res.StatusCode)
 }
 
 func TestUserAgentBlacklist(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
 	}
@@ -243,71 +236,82 @@ func TestUserAgentBlacklist(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Run("test user_agent curl/7.64.1 should be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.1")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.1")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 403, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.64.2 should be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.2")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.2")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 403, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.66.3 should not be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.66.3")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.66.3")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, res.StatusCode)
+		}
 	})
 }
 
 func TestUserAgentWhitelist(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-whitelist": "curl/7.64.*,curl/7.65.*",
 	}
@@ -329,71 +333,82 @@ func TestUserAgentWhitelist(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Run("test user_agent curl/7.64.1 should not be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.1")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.1")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.64.2 should not be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.2")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.2")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.66.3 should be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.66.3")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.66.3")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 403, res.StatusCode)
+		}
 	})
 }
 
 func TestUserAgentBlackAndWhitelist(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-whitelist": "curl/7.64.*",
 		"guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*",
@@ -416,72 +431,84 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Run("test user_agent curl/7.64.1 should not be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.1")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.1")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.64.2 should not be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.64.2")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.64.2")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 200, res.StatusCode)
+		}
 	})
 
 	t.Run("test user_agent curl/7.66.3 should be blocked", func(t *testing.T) {
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
-			nil,
-		)
-		req.Header.Add("User-Agent", "curl/7.66.3")
-		assert.NoError(t, err)
-		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+		for _, url := range []string{
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+		} {
+			req, err := http.NewRequest(
+				"GET",
+				url,
+				nil,
+			)
+			req.Header.Add("User-Agent", "curl/7.66.3")
+			assert.NoError(t, err)
+			req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+			res, err := http.DefaultClient.Do(req)
+			assert.NoError(t, err)
+			assert.Equal(t, 403, res.StatusCode)
+		}
 	})
 }
 
 func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
-	mockServerPort := freePort()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
 	numRequests := 10
 	rateLimit := "1-S"
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
-	srv := New(testReverseProxyConfig)
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/.well-known"
 	ingressExactPathMock.Annotations = map[string]string{
 		// rate limited after more than 10 requests per second
@@ -507,13 +534,13 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	t.Run("Rate limit should not be triggered on whitelisted path", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/.well-known", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/.well-known", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		assert.NoError(t, err)
@@ -536,19 +563,16 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 }
 
 func TestRateLimit10PerSecond(t *testing.T) {
-	mockServerPort := freePort()
 	requestLimit := 10
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
-	srv := New(testReverseProxyConfig)
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
 		// rate limited after more than 10 requests per second
@@ -557,7 +581,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
-	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
 	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
@@ -579,7 +603,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
@@ -587,7 +611,7 @@ func TestRateLimit10PerSecond(t *testing.T) {
 	t.Run("test 10 simultaneously requests should not trigger rate limit (10S)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		assert.NoError(t, err)
@@ -614,19 +638,16 @@ func TestRateLimit10PerSecond(t *testing.T) {
 }
 
 func TestRateLimit60PerMinute(t *testing.T) {
-	mockServerPort := freePort()
 	requestLimit := 60
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
-	srv := New(testReverseProxyConfig)
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
 		// rate limited after more than 60 requests per hour
@@ -635,7 +656,7 @@ func TestRateLimit60PerMinute(t *testing.T) {
 	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
-	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
 	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
@@ -657,14 +678,14 @@ func TestRateLimit60PerMinute(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Run("test 60 simultaneously requests should not trigger rate limit (60M)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		assert.NoError(t, err)
@@ -691,19 +712,16 @@ func TestRateLimit60PerMinute(t *testing.T) {
 }
 
 func TestRateLimit60PerHour(t *testing.T) {
-	mockServerPort := freePort()
 	requestLimit := 60
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
-	srv := New(testReverseProxyConfig)
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
 		// rate limited after more than 60 requests per hour
@@ -712,7 +730,7 @@ func TestRateLimit60PerHour(t *testing.T) {
 	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
-	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
 	ingressLimiterPathPrefix := limithandler.GetIngressLimiter(ingressExactPathMock)
@@ -734,14 +752,14 @@ func TestRateLimit60PerHour(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if rate limit works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	t.Run("test 60 simultaneously requests should not trigger rate limit (60H)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		assert.NoError(t, err)
@@ -768,19 +786,15 @@ func TestRateLimit60PerHour(t *testing.T) {
 }
 
 func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/user-agent-whitelist": "curl/7.64.*",
@@ -790,7 +804,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	ingressPathPrefixMock := mocks.IngressPathTypePrefixMock()
-	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressPathPrefixMock.Spec.Rules[0].HTTP.Paths[0].Path = "/foo"
 	ingressPathPrefixMock.Annotations = map[string]string{}
 	ingressExactPathMock.Namespace = "test"
@@ -813,14 +827,14 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 
 	t.Run("test if user agent block works with multiple ingresses (curl/7.64.1 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.64.1")
@@ -835,7 +849,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	t.Run("test if user agent block works with multiple ingresses (curl/7.64.2 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.64.2")
@@ -850,7 +864,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	t.Run("test if user agent block works with multiple ingresses (curl/7.66.3 should not work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.66.3")
@@ -865,7 +879,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	t.Run("test if user agent works on ingress without the block annotation /foo (curl/7.64.1 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/foo", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/foo", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.64.1")
@@ -880,7 +894,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	t.Run("test if user agent works on ingress without the block annotation /foo/bar (curl/7.64.2 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/foo/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/foo/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.64.2")
@@ -895,7 +909,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 	t.Run("test if user agent works on ingress without the block annotation /foo/bar/../bar/bar (curl/7.64.3 should work)", func(t *testing.T) {
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/foo/bar/../bar/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/foo/bar/../bar/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Header.Add("User-Agent", "curl/7.64.3")
@@ -928,16 +942,12 @@ func TestSetLogLevel(t *testing.T) {
 }
 
 func TestHealthzRoute(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -953,13 +963,13 @@ func TestHealthzRoute(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	t.Run("test healthz route", func(t *testing.T) {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/healthz", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/healthz", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		assert.NoError(t, err)
@@ -973,22 +983,18 @@ func TestHealthzRoute(t *testing.T) {
 }
 
 func TestProxyDirectorParams(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Path = "/bar"
 	ingressExactPathMock.Spec.Rules[0].Host = "www.guardgress.com"
 	ingressLimiterPathExact := limithandler.GetIngressLimiter(ingressExactPathMock)
-
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
 
 	srv.RoutingTable = &router.RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -1006,13 +1012,13 @@ func TestProxyDirectorParams(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	t.Run("test proxy director params", func(t *testing.T) {
 		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 		req, err := http.NewRequest(
 			"GET",
-			fmt.Sprintf("https://%s:%d/bar", testReverseProxyConfig.Host, testReverseProxyConfig.TlsPort),
+			fmt.Sprintf("https://%s:%d/bar", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
 			nil,
 		)
 		req.Host = ingressExactPathMock.Spec.Rules[0].Host
@@ -1028,22 +1034,18 @@ func TestProxyDirectorParams(t *testing.T) {
 }
 
 func TestHTTPToHTTPSRedirect(t *testing.T) {
-	mockServerPort := freePort()
-	mockServerAddress := fmt.Sprintf("127.0.0.1.default.svc.cluster.local:%d", mockServerPort)
-	testReverseProxyConfig.Port = freePort()
-	testReverseProxyConfig.TlsPort = freePort()
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
 
-	startMockServer(mockServerAddress, ctx)
-
-	srv := New(testReverseProxyConfig)
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
 
 	ingressExactPathMock := mocks.IngressExactPathTypeMock()
 	ingressExactPathMock.Annotations = map[string]string{
 		"guardgress/force-ssl-redirect": "true",
 	}
-	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerPort)
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
 	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
 
 	srv.RoutingTable = &router.RoutingTable{
@@ -1062,13 +1064,13 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
-	waitForServer(ctx, testReverseProxyConfig.Port)
+	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if https redirect works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	req, err := http.NewRequest(
 		"GET",
-		fmt.Sprintf("http://%s:%d", testReverseProxyConfig.Host, testReverseProxyConfig.Port),
+		fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
 		nil,
 	)
 	assert.NoError(t, err)
@@ -1079,30 +1081,35 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 	assert.True(t, strings.ContainsAny("https://127.0.0.1", err.Error()))
 }
 
-func startMockServer(addr string, ctx context.Context) *http.Server {
+func runMockServer(addr string, ctx context.Context) {
+	fmt.Print(addr)
 	mockSrv := &http.Server{
 		Addr: addr,
 		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// set for TestTlsFingerprintingAddHeader Test
 			for _, v := range []string{"X-Ja3-Fingerprint", "X-Ja4-Fingerprint"} {
 				if ok := r.Header.Get(v); ok != "" {
 					w.Header().Set(v, r.Header.Get(v))
 				}
 			}
+
+			// set for TestProxyDirectorParams Test
 			w.Header().Set("X-Requested-With-Host", r.Host)
 			_, _ = io.WriteString(w, mockServerResponse)
 		}),
 	}
+
 	go func() {
 		<-ctx.Done()
 		_ = mockSrv.Close()
 	}()
+
 	go func() {
 		err := mockSrv.ListenAndServe()
-		if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		if err != nil {
 			log.Fatalf("Mock server error: %s", err)
 		}
 	}()
-	return mockSrv
 }
 
 func waitForServer(ctx context.Context, port int) bool {

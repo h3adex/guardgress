@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - dev
+      - 'dependabot/**'
 
 jobs:
   test-go-code:

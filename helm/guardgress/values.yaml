@@ -37,8 +37,6 @@ env:
     value: "443"
   - name: LOG_LEVEL
     value: "INFO"
-  - name: GIN_MODE
-    value: "release"
 
 resources:
   limits:
