@@ -4,6 +4,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"net/http"
+	"net/http/httputil"
+	"net/url"
+
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
 	"github.com/h3adex/fp"
@@ -13,8 +17,6 @@ import (
 	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
-	"net/http"
-	"net/http/httputil"
 )
 
 const (
@@ -33,191 +35,196 @@ type Server struct {
 	RoutingTable *router.RoutingTable
 }
 
+// New creates a new Server instance.
 func New(config *Config) *Server {
 	routingTable := &router.RoutingTable{}
 	if err := env.Parse(routingTable); err != nil {
-		log.Fatalln(err)
+		log.Fatalf("Error parsing routing table: %v", err)
 	}
 
-	s := &Server{
+	return &Server{
 		Config:       config,
 		RoutingTable: routingTable,
 	}
-
-	return s
 }
 
+// UpdateRoutingTable updates the server's routing table based on the provided payload.
+func (s Server) UpdateRoutingTable(payload watcher.Payload) {
+	s.RoutingTable.Update(payload)
+}
+
+// Run starts the HTTP and HTTPS servers.
 func (s Server) Run(ctx context.Context) error {
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, egCtx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		log.Info("Starting HTTP-Server on ", s.Config.Port)
-		handler := gin.Default()
-		handler.Any("/*path", s.ServeHTTP)
-
-		server := &http.Server{
-			Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
-			Handler: handler,
-		}
-
-		go func() {
-			<-ctx.Done() // Wait for cancellation signal
-			log.Error("Context got cancelled, shutting down server")
-			_ = server.Shutdown(context.Background())
-		}()
-
-		err := server.ListenAndServe()
-		if err != nil {
-			log.Error("Error on http server: ", err.Error())
-			return err
-		}
-
-		return nil
+		return s.startHTTPServer(egCtx)
 	})
 
 	eg.Go(func() error {
-		log.Info("Starting HTTPS-Server on ", s.Config.TlsPort)
-		handler := gin.Default()
-		handler.Any("/*path", s.ServeHttps)
-
-		err := fp.Server(
-			ctx,
-			handler.Handler(),
-			fp.Option{
-				Addr: fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
-				GetCertificate: func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
-					return s.RoutingTable.GetTlsCertificate(clientHello.ServerName)
-				},
-			},
-		)
-
-		if err != nil {
-			log.Error("Error on https server: ", err.Error())
-			return err
-		}
-
-		return nil
+		return s.startHTTPSServer(egCtx)
 	})
 
 	return eg.Wait()
 }
 
-func (s Server) ServeHttps(ctx *gin.Context) {
-	// check if this request is used to determine the health of the service
-	if ctx.Request.RequestURI == "/healthz" {
-		s.healthz(ctx)
-		return
+func (s Server) startHTTPServer(ctx context.Context) error {
+	log.Infof("Starting HTTP Server on port %d", s.Config.Port)
+	handler := s.setupRouter(false)
+
+	server := &http.Server{
+		Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
+		Handler: handler,
 	}
 
-	if log.GetLevel() == log.DebugLevel {
-		req, err := httputil.DumpRequest(ctx.Request, true)
-		if err == nil {
-			log.Debug("request dump: ", string(req))
-		}
-		log.Debug("request ip: ", ctx.ClientIP())
-	}
+	go s.shutdownServerOnContextCancel(ctx, server, "HTTP")
 
-	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
-		ctx.Request.Host,
-		ctx.Request.RequestURI,
-		ctx.ClientIP(),
+	return server.ListenAndServe()
+}
+
+func (s Server) startHTTPSServer(ctx context.Context) error {
+	log.Infof("Starting HTTPS Server on port %d", s.Config.TlsPort)
+	handler := s.setupRouter(true)
+
+	err := fp.Server(
+		ctx,
+		handler.Handler(),
+		fp.Option{
+			Addr: fmt.Sprintf("%s:%d", s.Config.Host, s.Config.TlsPort),
+			GetCertificate: func(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+				return s.RoutingTable.GetTlsCertificate(clientHello.ServerName)
+			},
+		},
 	)
-	log.Debug("parsed annotations: ", parsedAnnotations)
+
+	if err != nil {
+		log.Fatalf("Error on HTTPS server: %v", err)
+	}
+
+	return nil
+}
+
+func (s Server) setupRouter(isHTTPS bool) *gin.Engine {
+	handler := gin.Default()
+	handler.Any("/*path", func(c *gin.Context) {
+		s.handleRequest(c, isHTTPS)
+	})
+
+	return handler
+}
+
+// handleRequest handles incoming HTTP/HTTPS requests.
+func (s Server) handleRequest(ctx *gin.Context, isHTTPS bool) {
+	switch ctx.Request.RequestURI {
+	case "/healthz":
+		s.healthz(ctx)
+	default:
+		s.proxyRequest(ctx, isHTTPS)
+	}
+}
+
+// proxyRequest proxies the request to the appropriate backend service.
+func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
+	host := ctx.Request.Host
+	requestURI := ctx.Request.RequestURI
+	clientIP := ctx.ClientIP()
+
+	// Retrieve backend service URL and annotations
+	svcURL, parsedAnnotations, routingError := s.RoutingTable.GetBackend(host, requestURI, clientIP)
+	log.Debugf("Parsed annotations: %+v", parsedAnnotations)
 
 	if routingError.Error != nil {
+		log.Errorf("Routing error: %v", routingError.Error)
 		ctx.Writer.WriteHeader(routingError.StatusCode)
 		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
 		return
 	}
 
-	parsedClientHello, err := models.ParseClientHello(ctx)
-	log.Debug("parsed ja3: ", parsedClientHello.Ja3)
-	log.Debug("parsed ja4: ", parsedClientHello.Ja4)
+	// Process TLS requests
+	if isHTTPS {
+		parsedClientHello, err := s.processTLSRequest(ctx, parsedAnnotations)
+		if err != nil {
+			log.Errorf("Error processing TLS request: %v", err)
+			ctx.Writer.WriteHeader(http.StatusInternalServerError)
+			_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
+			return
+		}
 
-	if err != nil {
-		log.Error("unable to parse client hello: ", err.Error())
-		ctx.Writer.WriteHeader(503)
-		_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
-		return
+		if !annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello) {
+			log.Errorf("TLS fingerprint not allowed: %s", parsedClientHello.Ja3)
+			ctx.Writer.WriteHeader(http.StatusForbidden)
+			_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
+			return
+		}
+	} else {
+		// Handle force SSL redirection
+		if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
+			httpsURL := fmt.Sprintf("https://%s%s", host, requestURI)
+			log.Debugf("Redirecting HTTP request to HTTPS: %s", httpsURL)
+			http.Redirect(ctx.Writer, ctx.Request, httpsURL, http.StatusMovedPermanently)
+			return
+		}
 	}
 
-	// checks user agent and tls fingerprint
-	if !isRequestAllowed(parsedAnnotations, parsedClientHello) {
-		ctx.Writer.WriteHeader(403)
+	// Check if request is allowed
+	if !annotations.IsUserAgentAllowed(parsedAnnotations, ctx.Request.UserAgent()) {
+		log.Warnf("Request not allowed: %s", requestURI)
+		ctx.Writer.WriteHeader(http.StatusForbidden)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return
 	}
 
-	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
-		ctx.Request.Header.Add("X-Ja3-Fingerprint", parsedClientHello.Ja3)
-		ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", parsedClientHello.Ja3H)
-		ctx.Request.Header.Add("X-Ja3n-Fingerprint", parsedClientHello.Ja3n)
-		ctx.Request.Header.Add("X-Ja4-Fingerprint", parsedClientHello.Ja4)
-		ctx.Request.Header.Add("X-Ja4h-Fingerprint", parsedClientHello.Ja4h)
-	}
-
-	log.Debug("proxying https request to: ", svcUrl)
-	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
-
-	proxy.Director = func(req *http.Request) {
-		req.Header = ctx.Request.Header
-		req.Host = ctx.Request.Host
-		req.URL.Scheme = svcUrl.Scheme
-		req.URL.Host = svcUrl.Host
-		req.URL.Path = svcUrl.Path
-	}
-
-	proxy.ServeHTTP(ctx.Writer, ctx.Request)
+	// Proxy the request to the backend service
+	s.proxyToBackend(ctx, svcURL, host)
 }
 
-func (s Server) ServeHTTP(ctx *gin.Context) {
-	if ctx.Request.RequestURI == "/healthz" {
-		s.healthz(ctx)
-		return
+func (s Server) processTLSRequest(ctx *gin.Context, parsedAnnotations map[string]string) (models.ParsedClientHello, error) {
+	parsedClientHello, err := models.ParseClientHello(ctx)
+	if err != nil {
+		return models.ParsedClientHello{}, fmt.Errorf("unable to parse client hello: %w", err)
+	}
+	log.Debugf("ParsedClientHello: %+v", parsedClientHello)
+
+	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
+		addTLSFingerprintHeaders(ctx, parsedClientHello)
 	}
 
-	svcUrl, parsedAnnotations, routingError := s.RoutingTable.GetBackend(
-		ctx.Request.Host,
-		ctx.Request.RequestURI,
-		ctx.ClientIP(),
-	)
+	return parsedClientHello, nil
+}
 
-	if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
-		url := fmt.Sprintf("https://%s%s", ctx.Request.Host, ctx.Request.RequestURI)
-		log.Debug("request coming from host: ", ctx.Request.Host)
-		log.Debug("redirecting to https: ", url)
-		http.Redirect(ctx.Writer, ctx.Request, url, http.StatusMovedPermanently)
-		return
-	}
-
-	if routingError.Error != nil {
-		ctx.Writer.WriteHeader(routingError.StatusCode)
-		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
-		return
-	}
-
-	log.Debug("proxying http request to: ", svcUrl)
-	proxy := httputil.NewSingleHostReverseProxy(svcUrl)
-
+func (s Server) proxyToBackend(ctx *gin.Context, svcURL *url.URL, host string) {
+	log.Debugf("Proxying request to backend service: %s", svcURL)
+	proxy := httputil.NewSingleHostReverseProxy(svcURL)
 	proxy.Director = func(req *http.Request) {
 		req.Header = ctx.Request.Header
-		req.Host = ctx.Request.Host
-		req.URL.Scheme = svcUrl.Scheme
-		req.URL.Host = svcUrl.Host
-		req.URL.Path = svcUrl.Path
+		req.Host = host
+		req.URL.Scheme = svcURL.Scheme
+		req.URL.Host = svcURL.Host
+		req.URL.Path = svcURL.Path
 	}
-
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
 func (s Server) healthz(ctx *gin.Context) {
-	ctx.Writer.WriteHeader(200)
+	ctx.Writer.WriteHeader(http.StatusOK)
 	_, err := ctx.Writer.Write([]byte("ok"))
 	if err != nil {
-		log.Error("unable to write healthz response: ", err.Error())
+		log.Error("Unable to write healthz response: ", err.Error())
 	}
 }
 
-func (s Server) UpdateRoutingTable(payload watcher.Payload) {
-	s.RoutingTable.Update(payload)
+// shutdownServerOnContextCancel shuts down the server when the context is canceled.
+func (s Server) shutdownServerOnContextCancel(ctx context.Context, server *http.Server, serverType string) {
+	<-ctx.Done()
+	if err := server.Shutdown(context.Background()); err != nil {
+		log.Errorf("Error shutting down %s server: %v", serverType, err)
+	}
+}
+
+func addTLSFingerprintHeaders(ctx *gin.Context, clientHello models.ParsedClientHello) {
+	ctx.Request.Header.Add("X-Ja3-Fingerprint", clientHello.Ja3)
+	ctx.Request.Header.Add("X-Ja3-Fingerprint-Hash", clientHello.Ja3H)
+	ctx.Request.Header.Add("X-Ja3n-Fingerprint", clientHello.Ja3n)
+	ctx.Request.Header.Add("X-Ja4-Fingerprint", clientHello.Ja4)
+	ctx.Request.Header.Add("X-Ja4h-Fingerprint", clientHello.Ja4h)
 }

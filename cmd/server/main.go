@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"github.com/caarlos0/env"
+	"github.com/gin-gonic/gin"
 	"github.com/h3adex/guardgress/pkg/server"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
@@ -26,6 +27,10 @@ func init() {
 		log.Error("failed to parse LOG_LEVEL, defaulting to info")
 		log.SetLevel(log.InfoLevel)
 		return
+	}
+
+	if log.GetLevel() != log.DebugLevel {
+		gin.SetMode(gin.ReleaseMode)
 	}
 
 	log.SetLevel(level)

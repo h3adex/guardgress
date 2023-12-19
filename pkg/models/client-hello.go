@@ -8,7 +8,7 @@ import (
 	"github.com/h3adex/guardgress/pkg/algorithms"
 )
 
-type ClientHelloParsed struct {
+type ParsedClientHello struct {
 	NegotiatedProtocol string
 	TlsVersion         uint16
 	UserAgent          string
@@ -20,16 +20,13 @@ type ClientHelloParsed struct {
 	Ja3H               string
 	Ja4                string
 	Ja4h               string
-	/*TODO: any need?
-	Http2              ja3.H2Ja3Spec
-	AkamaiFp           string*/
 }
 
-func ParseClientHello(ctx *gin.Context) (ClientHelloParsed, error) {
+func ParseClientHello(ctx *gin.Context) (ParsedClientHello, error) {
 	fpData, ok := ja3.GetFpContextData(ctx.Request.Context())
 	connectionState := fpData.ConnectionState()
 
-	result := ClientHelloParsed{
+	result := ParsedClientHello{
 		NegotiatedProtocol: connectionState.NegotiatedProtocol,
 		TlsVersion:         connectionState.Version,
 		UserAgent:          ctx.Request.UserAgent(),

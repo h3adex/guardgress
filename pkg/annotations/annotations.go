@@ -71,7 +71,7 @@ func isUserAgentListed(userAgentList string, userAgent string, listType string) 
 	return false
 }
 
-func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ClientHelloParsed) bool {
+func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ParsedClientHello) bool {
 	whitelistAnnotation := annotations[TLSFingerprintWhitelist]
 	blacklistAnnotation := annotations[TLSFingerprintBlackList]
 
@@ -86,7 +86,7 @@ func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello mo
 	return len(whitelistAnnotation) == 0
 }
 
-func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ClientHelloParsed, listType string) bool {
+func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ParsedClientHello, listType string) bool {
 	if tlsFingerprintList == "" {
 		return false
 	}
