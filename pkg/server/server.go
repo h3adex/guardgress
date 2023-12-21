@@ -4,9 +4,13 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
@@ -22,6 +26,53 @@ import (
 const (
 	InternalErrorResponse  = "Internal Server Error"
 	ForbiddenErrorResponse = "Forbidden"
+)
+
+const (
+	NoErrorIdentifier = iota
+	InternalErrorIdentifier
+	UserAgentForbiddenIdentifier
+	TlsFingerprintForbiddenIdentifier
+	RateLimitedErrorIdentifier
+)
+
+var (
+	reqCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_https_request_count",
+		Help: "Total number of HTTP and HTTPS requests",
+	}, []string{"protocol"})
+
+	reqStatusCodeCounter = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "http_https_request_status_code_count",
+		Help: "HTTP and HTTPS request count by status code",
+	}, []string{"protocol", "status_code"})
+
+	reqDurationHistogram = promauto.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "http_https_request_duration_seconds",
+		Help:    "Duration of HTTP and HTTPS requests",
+		Buckets: prometheus.DefBuckets,
+	}, []string{"protocol"})
+
+	concurrentReqGauge = promauto.NewGauge(prometheus.GaugeOpts{
+		Name: "concurrent_requests",
+		Help: "Current number of concurrent requests",
+	})
+
+	rateLimitBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "rate_limit_blocks",
+		Help: "Number of requests blocked due to rate limiting",
+	}, []string{"protocol", "endpoint"})
+
+	// TODO: Add tls fingerprint hash to labels. Not sure which value makes sense
+	tlsFingerprintBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "tls_fingerprint_blocks",
+		Help: "Number of requests blocked due to TLS fingerprinting",
+	}, []string{"protocol"})
+
+	userAgentBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "user_agent_blocks",
+		Help: "Number of requests blocked due to user agent",
+	}, []string{"protocol", "user_agent"})
 )
 
 type Config struct {
@@ -70,7 +121,7 @@ func (s Server) Run(ctx context.Context) error {
 
 func (s Server) startHTTPServer(ctx context.Context) error {
 	log.Infof("Starting HTTP Server on port %d", s.Config.Port)
-	handler := s.setupRouter(false)
+	handler := s.setupRouter("http")
 
 	server := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.Config.Host, s.Config.Port),
@@ -84,7 +135,7 @@ func (s Server) startHTTPServer(ctx context.Context) error {
 
 func (s Server) startHTTPSServer(ctx context.Context) error {
 	log.Infof("Starting HTTPS Server on port %d", s.Config.TlsPort)
-	handler := s.setupRouter(true)
+	handler := s.setupRouter("https")
 
 	err := fp.Server(
 		ctx,
@@ -104,27 +155,39 @@ func (s Server) startHTTPSServer(ctx context.Context) error {
 	return nil
 }
 
-func (s Server) setupRouter(isHTTPS bool) *gin.Engine {
+func (s Server) setupRouter(protocol string) *gin.Engine {
 	handler := gin.Default()
 	handler.Any("/*path", func(c *gin.Context) {
-		s.handleRequest(c, isHTTPS)
+		startTime := time.Now()
+		concurrentReqGauge.Inc()
+
+		errorIdentifier := s.proxyRequest(c, protocol == "https")
+
+		duration := time.Since(startTime)
+		reqDurationHistogram.WithLabelValues(protocol).Observe(duration.Seconds())
+		reqCounter.WithLabelValues(protocol).Inc()
+		statusCode := strconv.Itoa(c.Writer.Status())
+		reqStatusCodeCounter.WithLabelValues(protocol, statusCode).Inc()
+
+		switch errorIdentifier {
+		case NoErrorIdentifier, InternalErrorIdentifier:
+			return
+		case RateLimitedErrorIdentifier:
+			rateLimitBlocks.WithLabelValues(protocol, c.Request.RequestURI).Inc()
+		case UserAgentForbiddenIdentifier:
+			userAgentBlocks.WithLabelValues(protocol, c.Request.UserAgent()).Inc()
+		case TlsFingerprintForbiddenIdentifier:
+			tlsFingerprintBlocks.WithLabelValues(protocol).Inc()
+		}
+
+		concurrentReqGauge.Dec()
 	})
 
 	return handler
 }
 
-// handleRequest handles incoming HTTP/HTTPS requests.
-func (s Server) handleRequest(ctx *gin.Context, isHTTPS bool) {
-	switch ctx.Request.RequestURI {
-	case "/healthz":
-		s.healthz(ctx)
-	default:
-		s.proxyRequest(ctx, isHTTPS)
-	}
-}
-
 // proxyRequest proxies the request to the appropriate backend service.
-func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
+func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 	host := ctx.Request.Host
 	requestURI := ctx.Request.RequestURI
 	clientIP := ctx.ClientIP()
@@ -137,7 +200,11 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
 		log.Errorf("Routing error: %v", routingError.Error)
 		ctx.Writer.WriteHeader(routingError.StatusCode)
 		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
-		return
+		if routingError.StatusCode == 429 {
+			return RateLimitedErrorIdentifier
+		}
+
+		return InternalErrorIdentifier
 	}
 
 	// Process TLS requests
@@ -147,14 +214,14 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
 			log.Errorf("Error processing TLS request: %v", err)
 			ctx.Writer.WriteHeader(http.StatusInternalServerError)
 			_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
-			return
+			return InternalErrorIdentifier
 		}
 
 		if !annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello) {
 			log.Errorf("TLS fingerprint not allowed: %s", parsedClientHello.Ja3)
 			ctx.Writer.WriteHeader(http.StatusForbidden)
 			_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
-			return
+			return TlsFingerprintForbiddenIdentifier
 		}
 	} else {
 		// Handle force SSL redirection
@@ -162,7 +229,7 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
 			httpsURL := fmt.Sprintf("https://%s%s", host, requestURI)
 			log.Debugf("Redirecting HTTP request to HTTPS: %s", httpsURL)
 			http.Redirect(ctx.Writer, ctx.Request, httpsURL, http.StatusMovedPermanently)
-			return
+			return NoErrorIdentifier
 		}
 	}
 
@@ -171,11 +238,13 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) {
 		log.Warnf("Request not allowed: %s", requestURI)
 		ctx.Writer.WriteHeader(http.StatusForbidden)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
-		return
+		return UserAgentForbiddenIdentifier
 	}
 
 	// Proxy the request to the backend service
 	s.proxyToBackend(ctx, svcURL, host)
+
+	return NoErrorIdentifier
 }
 
 func (s Server) processTLSRequest(ctx *gin.Context, parsedAnnotations map[string]string) (models.ParsedClientHello, error) {

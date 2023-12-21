@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/h3adex/guardgress/pkg/healthmetrics"
 	"github.com/h3adex/guardgress/pkg/limithandler"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
@@ -21,6 +22,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -71,25 +73,42 @@ func TestHTTPRequest(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
 	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if reverse proxy works for http request
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
-		nil,
-	)
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+	t.Run("test if reverse proxy works for http request", func(t *testing.T) {
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
-	bs, err := io.ReadAll(res.Body)
-	assert.NoError(t, err)
-	err = res.Body.Close()
-	assert.NoError(t, err)
-	assert.Equal(t, mockServerResponse, string(bs))
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+		err = res.Body.Close()
+		assert.NoError(t, err)
+		assert.Equal(t, mockServerResponse, string(bs))
+
+		/*		// check if metrics are working
+				res, err = http.Get(fmt.Sprintf("http://%s/metrics", healthMetricsServerAddress))
+				assert.NoError(t, err)
+				assert.Equal(t, 200, res.StatusCode)
+				bs, err = io.ReadAll(res.Body)
+				assert.NoError(t, err)
+				assert.True(t, strings.ContainsAny(string(bs), "http_https_request_status_code_count{protocol=\"http\""))*/
+	})
 }
 
 func TestHTTPSRequest(t *testing.T) {
@@ -120,26 +139,43 @@ func TestHTTPSRequest(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
 	waitForServer(ctx, reverseProxyConfig.Port)
 
-	// check if reverse proxy works for https request
-	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-	req, err := http.NewRequest(
-		"GET",
-		fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
-		nil,
-	)
-	assert.NoError(t, err)
-	req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+	t.Run("test if reverse proxy works for https request", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
 
-	res, err := http.DefaultClient.Do(req)
-	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
-	bs, err := io.ReadAll(res.Body)
-	assert.NoError(t, err)
-	err = res.Body.Close()
-	assert.NoError(t, err)
-	assert.Equal(t, mockServerResponse, string(bs))
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+		err = res.Body.Close()
+		assert.NoError(t, err)
+		assert.Equal(t, mockServerResponse, string(bs))
+
+		// check if metrics are working
+		/*		res, err = http.Get(fmt.Sprintf("http://%s/metrics", healthMetricsServerAddress))
+				assert.NoError(t, err)
+				assert.Equal(t, 200, res.StatusCode)
+				bs, err = io.ReadAll(res.Body)
+				assert.NoError(t, err)
+				assert.True(t, strings.ContainsAny(string(bs), "http_https_request_status_code_count{protocol=\"https\""))*/
+	})
 }
 
 func TestTlsFingerprintingAddHeader(t *testing.T) {
@@ -169,6 +205,13 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 
 	go func() {
 		_ = srv.Run(ctx)
+	}()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
 	}()
 
 	waitForServer(ctx, reverseProxyConfig.Port)
@@ -236,10 +279,35 @@ func TestUserAgentBlacklist(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
 	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if user agent block works
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+
+	for _, url := range []string{
+		fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+		fmt.Sprintf("http://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.Port),
+	} {
+		req, err := http.NewRequest(
+			"GET",
+			url,
+			nil,
+		)
+		req.Header.Add("User-Agent", "curl/7.64.1")
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 403, res.StatusCode)
+	}
 
 	t.Run("test user_agent curl/7.64.1 should be blocked", func(t *testing.T) {
 		for _, url := range []string{
@@ -603,6 +671,13 @@ func TestRateLimit10PerSecond(t *testing.T) {
 		_ = srv.Run(ctx)
 	}()
 
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
 	waitForServer(ctx, reverseProxyConfig.Port)
 
 	// check if rate limit works
@@ -941,47 +1016,6 @@ func TestSetLogLevel(t *testing.T) {
 	assert.Equal(t, log.GetLevel(), log.InfoLevel)
 }
 
-func TestHealthzRoute(t *testing.T) {
-	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
-	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
-	ctx := context.Background()
-
-	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
-	srv := New(reverseProxyConfig)
-
-	srv.RoutingTable = &router.RoutingTable{
-		Ingresses: &v1.IngressList{
-			TypeMeta: v12.TypeMeta{},
-			ListMeta: v12.ListMeta{},
-			Items:    []v1.Ingress{},
-		},
-		TlsCertificates: mocks.TlsCertificatesMock(),
-		IngressLimiters: []*limiter.Limiter{},
-	}
-
-	go func() {
-		_ = srv.Run(ctx)
-	}()
-
-	waitForServer(ctx, reverseProxyConfig.Port)
-
-	t.Run("test healthz route", func(t *testing.T) {
-		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
-		req, err := http.NewRequest(
-			"GET",
-			fmt.Sprintf("https://%s:%d/healthz", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
-			nil,
-		)
-		assert.NoError(t, err)
-		res, err := http.DefaultClient.Do(req)
-		assert.NoError(t, err)
-		// should not return 404
-		assert.Equal(t, 200, res.StatusCode)
-		bs, err := io.ReadAll(res.Body)
-		assert.Equal(t, string(bs), "ok")
-	})
-}
-
 func TestProxyDirectorParams(t *testing.T) {
 	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
 	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
@@ -1079,6 +1113,44 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 	_, err = http.DefaultClient.Do(req)
 	// Error is expected. Just check if https redirect worked
 	assert.True(t, strings.ContainsAny("https://127.0.0.1", err.Error()))
+}
+
+// This is the last test which tracks if the metrics are working
+func TestCustomPrometheusMetrics(t *testing.T) {
+	healthMetricsPort := freePort()
+	ctx := context.Background()
+
+	go func(port int, ctx context.Context) {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(healthMetricsPort))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}(healthMetricsPort, ctx)
+
+	waitForServer(ctx, healthMetricsPort)
+
+	// check if metrics are working
+	res, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/metrics", healthMetricsPort))
+	assert.NoError(t, err)
+	assert.Equal(t, 200, res.StatusCode)
+	bs, err := io.ReadAll(res.Body)
+	t.Log(string(bs))
+	assert.NoError(t, err)
+
+	metricsWhichShouldBePresent := []string{
+		"http_https_request_count",
+		"http_https_request_status_code_count",
+		"http_https_request_duration_seconds",
+		"concurrent_requests",
+		"rate_limit_blocks",
+		"user_agent_blocks",
+	}
+
+	for _, metric := range metricsWhichShouldBePresent {
+		t.Run("test if metric "+metric+" is present", func(t *testing.T) {
+			assert.True(t, strings.ContainsAny(string(bs), metric))
+		})
+	}
 }
 
 func runMockServer(addr string, ctx context.Context) {

@@ -50,14 +50,14 @@ spec:
           livenessProbe:
             httpGet:
               path: /healthz
-              port: http
+              port: 10254
             initialDelaySeconds: {{ .Values.service.initialDelaySeconds }}
             periodSeconds: {{ .Values.service.periodSeconds }}
             timeoutSeconds: {{ .Values.service.timeoutSeconds }}
           readinessProbe:
             httpGet:
               path: /healthz
-              port: http
+              port: 10254
             initialDelaySeconds: {{ .Values.service.initialDelaySeconds }}
             periodSeconds: {{ .Values.service.periodSeconds }}
             timeoutSeconds: {{ .Values.service.timeoutSeconds }}
