@@ -43,15 +43,20 @@ func sortIngressHttpPaths(paths []v1.HTTPIngressPath) []v1.HTTPIngressPath {
 func (r *RoutingTable) GetBackend(host, uri, ip string) (*url.URL, map[string]string, RoutingError) {
 	for index, ingress := range r.Ingresses.Items {
 		for _, rule := range ingress.Spec.Rules {
-			if isHostMatch(rule.Host, host) {
-				for _, path := range sortIngressHttpPaths(rule.HTTP.Paths) {
-					if isPathMatch(path, uri) {
-						if limithandler.IsLimited(r.IngressLimiters[index], ingress.Annotations, ip, path.Path) {
-							return nil, nil, RoutingError{Error: fmt.Errorf("rate limited"), StatusCode: 429}
-						}
-						return buildURL(path, ingress), ingress.Annotations, RoutingError{}
-					}
+			if !isHostMatch(rule.Host, host) {
+				continue
+			}
+
+			for _, path := range sortIngressHttpPaths(rule.HTTP.Paths) {
+				if !isPathMatch(path, uri) {
+					continue
 				}
+
+				if limithandler.IsLimited(r.IngressLimiters[index], ingress.Annotations, ip, path.Path) {
+					return nil, nil, RoutingError{Error: fmt.Errorf("rate limited"), StatusCode: 429}
+				}
+
+				return buildURL(path, ingress), ingress.Annotations, RoutingError{}
 			}
 		}
 	}

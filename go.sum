@@ -114,8 +114,6 @@ github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198 h1:phk1GNobIIQWL
 github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198/go.mod h1:wiILK6EotceHz/Rnb6ux8PzY3sr5OV+mYuIcbtxpkYI=
 github.com/gospider007/websocket v0.0.0-20231215083826-2227da2a2a13 h1:s+qc8TnHAcc97Si5m3mpl+Q2YYm7aFEn+qElRLELisM=
 github.com/gospider007/websocket v0.0.0-20231215083826-2227da2a2a13/go.mod h1:9KISQz9TF5iN04Ieuaa8N5g5pe2ZC4TJlqAq64/SI0U=
-github.com/h3adex/fp v0.0.0-20231121110146-224beb073d4b h1:8/k+cc9D5tL3kcmuZHW8vzsngyKaBMFuqtylAA5OXF8=
-github.com/h3adex/fp v0.0.0-20231121110146-224beb073d4b/go.mod h1:fXkhlLm5l71f1lUFjDdKBMGAXmQA9QVUTsz/1je0vG8=
 github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3 h1:rGUjx1LV8EtTCKt0PuUJVuNg40uoo2dBrk4nXGQk5qI=
 github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3/go.mod h1:4h46XHbROFjXvKpPZ1UtbEX1w/u39adSpWFH6IhmqJ8=
 github.com/imdario/mergo v0.3.6 h1:xTNEAn+kxVO7dTZGu0CegyqKZmoWFI0rF8UxjlB2d28=
@@ -246,8 +244,8 @@ golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5ydBHafDWAxML/pGHZbMvKqRZ5+Abc=
 golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
-golang.org/x/crypto v0.16.0 h1:mMMrFzRSCF0GvB7Ne27XVtVAaXLrPmgPC7/v0tkwHaY=
-golang.org/x/crypto v0.16.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
+golang.org/x/crypto v0.17.0 h1:r8bRNjWL3GshPW3gkd+RpvzWrZAwPS49OmTGZ/uhM4k=
+golang.org/x/crypto v0.17.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
 golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611 h1:qCEDpW1G+vcj3Y7Fy52pEM1AWm3abj8WimGYejI3SC4=
 golang.org/x/exp v0.0.0-20231214170342-aacd6d4b4611/go.mod h1:iRJReGqOEeBhDZGkGbynYwcHlctCvnjTYIamk7uXpHI=
 golang.org/x/image v0.14.0 h1:tNgSxAFe3jC4uYqvZdTr84SZoM1KfwdC9SKIFrLjFn4=
