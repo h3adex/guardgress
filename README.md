@@ -16,39 +16,29 @@ a Kubernetes Ingress Controller.
 - [x] Redis Integration: Utilize Redis as a backend to store and manage rate limiting information efficiently.
 - [x] SSL Redirection Enforcement: Ensure SSL connection by enforcing HTTPS through redirection.
 - [x] Helm Chart Installation: Package the application as a Helm Chart for convenient and scalable deployment.
+- [x] Integrated Prometheus Metrics and Health Check Server for monitoring and reliability
 
 ## Usage
-To block requests, utilize specific [annotations](pkg/annotations/annotations.go) on the Ingress API Object:
 
-- `guardgress/user-agent-whitelist`: Limits access to specific User-Agents (comma-separated). Whitelist takes precedence over the blacklist. If both are set, anything outside the whitelist is blocked. For an example, check [this configuration](k8s/examples/ingress-ua-block-white-and-blacklist.yaml).
-- `guardgress/user-agent-blacklist`: Blocks requests from particular User-Agents (comma-separated).
-- `guardgress/tls-fingerprint-whitelist`: Limits access to specific TLS Fingerprints (`Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated). Whitelist takes precedence over the blacklist. If both are set, anything outside the whitelist is blocked. Find an example configuration [here](k8s/examples/ingress-tls-block-white-and-blacklist.yaml).
-- `guardgress/tls-fingerprint-blacklist`: Restricts requests from particular TLS Fingerprints (`Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated).
-- `guardgress/add-tls-fingerprint-header`: Adds `Ja3,Ja3-Hash,Ja3n,Ja4,Ja4h` fingerprints/hashes to the request header.
-- `guardgress/force-ssl-redirect`: Forces SSL Redirection. This annotation is only useful if you have a TLS certificate configured for your ingress object.
-- `guardgress/limit-ip-whitelist`: Whitelists IP addresses for rate limiting.
-- `guardgress/limit-path-whitelist`: Whitelists Paths for rate limiting. For instance, if you have an ingress object with a Pathtype set as "Prefix" and Path defined as "/shop," you can specify "/shop/products" to be exempted from rate limiting through whitelisting.
-- `guardgress/limit-redis-store-url`: This parameter defines the URL of the Redis store. If left unspecified, the controller resorts to an in-memory store. Redis becomes essential particularly when operating in High Availability (HA) Mode with multiple pods.
-- `guardgress/limit-period` uses the simplified format "limit-period", with the given periods:
-```text
-"S": second 
-"M": minute
-"H": hour
-"D": day
+The following table outlines the annotations available for the Guardgress Ingress Controller.
+These annotations can be used to control access, apply security measures, and configure rate 
+limiting on Ingress API Objects.
 
-Examples:
-    
-5 reqs/second: "5-S"
-10 reqs/minute: "10-M"
-1000 reqs/hour: "1000-H"
-2000 reqs/day: "2000-D"
-```
-If you want to use the limit-period annotation, make sure to set externalTrafficPolicy to Local in the service object of the ingress controller. 
-Otherwise, the rate limiting will not work as intended. More Information can be found here: https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip
+| Annotation                              | Description                                                                             | Details                                                     | Example Configuration                                                                                                                       |
+|-----------------------------------------|-----------------------------------------------------------------------------------------|-------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| `guardgress/user-agent-whitelist`       | Limits access to specific User-Agents. Whitelist takes precedence over the blacklist.   | Comma-separated values.                                     | [User-Agent Whitelist and Blacklist](k8s/examples/ingress-ua-block-white-and-blacklist.yaml)                                                |
+| `guardgress/user-agent-blacklist`       | Blocks requests from particular User-Agents.                                            | Comma-separated values.                                     | [User-Agent Whitelist and Blacklist](k8s/examples/ingress-ua-block-white-and-blacklist.yaml)                                                |
+| `guardgress/tls-fingerprint-whitelist`  | Limits access based on TLS Fingerprints. Whitelist takes precedence over the blacklist. | `Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated. | [TLS Fingerprint Whitelist and Blacklist](k8s/examples/ingress-tls-block-white-and-blacklist.yaml)                                          |
+| `guardgress/tls-fingerprint-blacklist`  | Restricts requests from specific TLS Fingerprints.                                      | `Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h` - comma-separated. | [TLS Fingerprint Whitelist and Blacklist](k8s/examples/ingress-tls-block-white-and-blacklist.yaml)                                          |
+| `guardgress/add-tls-fingerprint-header` | Adds TLS fingerprint/hashes to the request header.                                      | `Ja3`, `Ja3-Hash`, `Ja3n`, `Ja4`, `Ja4h`.                   | [Add TLS Header](k8s/examples/ingress-add-tls-header.yaml)                                                                                  |
+| `guardgress/force-ssl-redirect`         | Forces SSL Redirection. Useful with a TLS certificate.                                  |                                                             | [Force SSL Redirect](k8s/examples/ingress-force-ssl-redirect.yaml)                                                                          |
+| `guardgress/limit-ip-whitelist`         | Whitelists IP addresses for rate limiting.                                              |                                                             | [Real World Example](k8s/examples/ingress-real-world-example.yaml)                                                                          |
+| `guardgress/limit-path-whitelist`       | Whitelists Paths for rate limiting.                                                     | Exempt specific paths from rate limiting.                   | [Real World Example](k8s/examples/ingress-real-world-example.yaml)                                                                          |
+| `guardgress/limit-redis-store-url`      | Defines the URL of the Redis store for rate limiting.                                   | Default is in-memory store. Essential for HA mode.          | [Rate Limiting with Redis](k8s/examples/ingress-limit-period-with-redis.yaml)                                                               |
+| `guardgress/limit-period`               | Sets the rate limit period.                                                             | Format: `[number]-[S/M/H/D]` (Second/Minute/Hour/Day).      | [Rate Limiting](https://kubernetes.io/docs/tasks/access-application-cluster/create-external-load-balancer/#preserving-the-client-source-ip) |
 
-Concrete examples of these annotations can be found in [k8s/examples](k8s/examples). This Ingress Controller
-is watching Ingress Resources which either have the ingressClassName set to "guardgress" or 
-no ingressClassName set at all.
+This Ingress Controller watches Ingress Resources with the `ingressClassName` 
+set to "guardgress" or with no `ingressClassName` set at all.
 
 ## Installation
 
@@ -72,9 +62,12 @@ Once installed, you can create ingress objects with the annotations described ab
 are located here: [k8s/examples](k8s/examples).
 
 ## Known Limitations
-- Guardgress currently does not fully support certain functionalities provided by the Ingress API Object.
-- The existence of a healthz route might cause conflicts for users intending to reverse proxy to this route.
-- We ought to transition to Custom Resource Definitions (CRD) to store configuration information instead of relying solely on annotations. Presently, certain annotations, particularly those containing commas, aren't parsed accurately for user-agent configurations.
+- Guardgress might not fully support certain functionalities provided by the Ingress API Object. 
+Please open an Issue if you encounter any problems.
+- We ought to transition to Custom Resource Definitions (CRD) to store 
+configuration information instead of relying solely on annotations. 
+Presently, certain annotations, particularly those containing commas, 
+aren't parsed accurately for user-agent configurations.
 
 ## Development
 ```sh
@@ -90,9 +83,54 @@ leveraging cert-manager for added support.
 Further information on how to set up my local test environment 
 can be found in [here](build/README.md).
 
+## Monitoring
+The Guardgress Ingress Controller is equipped with built-in monitoring capabilities 
+to ensure efficient operation and troubleshooting. It includes:
+- Prometheus Metrics Endpoint: Accessible at /metrics, this endpoint aggregates 
+various metrics related to HTTP and HTTPS requests.
+- Health Check Endpoint: Located at /healthz, this endpoint monitors the 
+- readiness and liveliness of the ingress controller.
+
+**Note**: Both endpoints are hosted on a Go server running on port 10254. 
+By default, this server is not externally exposed. 
+To access these metrics, you can use kubectl port-forward to forward the port to your local machine.
+
+The Prometheus Metrics Endpoint provides a comprehensive set of metrics:
+
+    HTTP/HTTPS Request Count (http_https_request_count):
+        Description: Counts the total number of HTTP and HTTPS requests.
+        Labels: protocol
+
+    HTTP/HTTPS Request Status Code Count (http_https_request_status_code_count):
+        Description: Tracks the count of HTTP and HTTPS requests by their status code.
+        Labels: protocol, status_code
+
+    HTTP/HTTPS Request Duration (http_https_request_duration_seconds):
+        Description: Measures the duration of HTTP and HTTPS requests.
+        Labels: protocol
+        Buckets: Utilizes Prometheus's default bucket configuration.
+
+    Concurrent Requests (concurrent_requests):
+        Description: Indicates the current number of concurrent requests being processed.
+        Type: Gauge
+
+    Rate Limit Blocks (rate_limit_blocks):
+        Description: Counts the number of requests blocked due to rate limiting.
+        Labels: protocol, endpoint
+
+    TLS Fingerprint Blocks (tls_fingerprint_blocks):
+        Description: Monitors the number of requests blocked due to TLS fingerprinting.
+        Labels: protocol
+        Note: Future enhancements may include TLS fingerprint hash labeling.
+
+    User Agent Blocks (user_agent_blocks):
+        Description: Tracks the number of requests blocked based on the user agent.
+        Labels: protocol, user_agent
+
 ## Ideas
 Don't hesitate to open an issue or pull request with your suggestions or ideas
-- [ ] Proxy Connection Identification: Implement a method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18) to identify connections through proxies.
+- [ ] Proxy Connection Identification: Implement a method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
+to identify connections through proxies.
 
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.

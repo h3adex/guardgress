@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/caarlos0/env"
 	"github.com/gin-gonic/gin"
+	"github.com/h3adex/guardgress/pkg/healthmetrics"
 	"github.com/h3adex/guardgress/pkg/server"
 	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
@@ -53,10 +54,12 @@ func main() {
 	eg, ctx := errgroup.WithContext(ctx)
 	srv := server.New(config)
 
+	// Start reverse proxy port 80/443
 	eg.Go(func() error {
 		return srv.Run(ctx)
 	})
 
+	// Start watcher for k8s resources
 	eg.Go(func() error {
 		return watcher.New(
 			k8sClient,
@@ -64,6 +67,11 @@ func main() {
 				srv.UpdateRoutingTable(routingTable)
 			},
 		).Run(ctx)
+	})
+
+	// start health/metric server
+	eg.Go(func() error {
+		return healthmetrics.New().Run(ctx)
 	})
 
 	if err = eg.Wait(); err != nil {
