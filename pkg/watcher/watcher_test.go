@@ -3,12 +3,21 @@ package watcher
 import (
 	"context"
 	"crypto/tls"
+	"fmt"
+	"github.com/h3adex/guardgress/pkg/healthmetrics"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"io"
 	v14 "k8s.io/api/apps/v1"
 	v12 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/networking/v1"
 	v13 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	testClient "k8s.io/client-go/kubernetes/fake"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 )
@@ -16,6 +25,18 @@ import (
 var nginxIngressClassName = "nginx"
 
 func TestWatcherDetectChanges(t *testing.T) {
+	healthMetricsPort := freePort()
+	ctx := context.Background()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(healthMetricsPort))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
+	waitForServer(ctx, 10254)
+
 	t.Run("test change detected on ingress resources in cluster with ingressClassName guardgress", func(t *testing.T) {
 		updateCalled := make(chan struct{})
 		defer close(updateCalled)
@@ -296,4 +317,63 @@ func TestWatcherDetectChanges(t *testing.T) {
 			t.Error("Update not received within the expected time")
 		}
 	})
+
+	t.Run("test if watcher metrics are registered", func(t *testing.T) {
+		// check if metrics are working
+		res, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/metrics", healthMetricsPort))
+		assert.NoError(t, err)
+		assert.Equal(t, 200, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		t.Log(string(bs))
+		assert.NoError(t, err)
+
+		metricsWhichShouldBePresent := []string{
+			"watcher_ingresses_total",
+			"watcher_ingress_limiters_total",
+			"watcher_tls_certificates_total",
+		}
+
+		for _, metric := range metricsWhichShouldBePresent {
+			t.Run("test if metric "+metric+" is present", func(t *testing.T) {
+				assert.True(t, strings.ContainsAny(string(bs), metric))
+			})
+		}
+	})
+}
+
+func waitForServer(ctx context.Context, port int) bool {
+	ctx, cleanup := context.WithTimeout(ctx, time.Second*10)
+	defer cleanup()
+
+	ticker := time.NewTicker(time.Millisecond * 50)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		select {
+		case <-ctx.Done():
+			return false
+		default:
+		}
+
+		if conn, err := net.Dial("tcp4", fmt.Sprintf("127.0.0.1:%d", port)); err == nil {
+			_ = conn.Close()
+			return true
+		}
+	}
+	panic("impossible")
+}
+
+func freePort() int {
+	// Listen on a random port
+	listener, _ := net.Listen("tcp", ":0")
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			log.Error(err)
+		}
+	}(listener)
+
+	// Retrieve the address information
+	address := listener.Addr().(*net.TCPAddr)
+	return address.Port
 }

@@ -42,24 +42,22 @@ set to "guardgress" or with no `ingressClassName` set at all.
 
 ## Installation
 
-### With Helm
+### Using Helm
 ```shell
 helm repo add guardgress https://h3adex.github.io/guardgress
 helm repo update
 helm install guardgress guardgress/guardgress-ingress-controller --namespace guardgress --create-namespace
 ```
 
-### With K8s Manifests
+### Using Kubernetes Manifests
 ```shell
 git clone https://github.com/h3adex/guardgress
-# Creates Namespace,SA,CRB,CR,Deployment,Service(LoadBalancer)
-kubectl apply -f k8s/guardgress-deployment-svc.yaml
-# Creates HPA
-kubectl apply -f k8s/guardgress-deployment-hpa.yaml
+kubectl apply -f k8s/guardgress-deployment-svc.yaml  # Creates Namespace, SA, CRB, CR, Deployment, Service (LoadBalancer)
+kubectl apply -f k8s/guardgress-deployment-hpa.yaml  # Creates HPA
 ```
 
-Once installed, you can create ingress objects with the annotations described above. Examples
-are located here: [k8s/examples](k8s/examples).
+After installation, you can define ingress objects using the provided annotations.
+Example configurations are available here: [k8s/examples](k8s/examples).
 
 ## Known Limitations
 - Guardgress might not fully support certain functionalities provided by the Ingress API Object. 
@@ -71,61 +69,33 @@ aren't parsed accurately for user-agent configurations.
 
 ## Development
 ```sh
-# deploy to local kind cluster
-make dev kind
-# build image and push to azure registry
-make dev azure
+make dev kind # deploy to local kind cluster
+make dev azure # build image and push to azure registry
 ```
 This command facilitates container building and controller deployment on a kind cluster.
 I've successfully tested the functionality of this ingress-controller on an AKS cluster,
 leveraging cert-manager for added support.
 
 Further information on how to set up my local test environment 
-can be found in [here](build/README.md).
+can be found in [here](docs/how-to-test.md).
 
 ## Monitoring
-The Guardgress Ingress Controller is equipped with built-in monitoring capabilities 
-to ensure efficient operation and troubleshooting. It includes:
-- Prometheus Metrics Endpoint: Accessible at /metrics, this endpoint aggregates 
-various metrics related to HTTP and HTTPS requests.
-- Health Check Endpoint: Located at /healthz, this endpoint monitors the 
-- readiness and liveliness of the ingress controller.
+The Guardgress Ingress Controller is designed with monitoring features in mind.
 
-**Note**: Both endpoints are hosted on a Go server running on port 10254. 
-By default, this server is not externally exposed. 
-To access these metrics, you can use kubectl port-forward to forward the port to your local machine.
+- Prometheus Metrics Endpoint: Accessible at /metrics, this endpoint consolidates a wide
+range of metrics pertinent to HTTP and HTTPS request processing. This provides valuable 
+insights into the performance and health of the ingress controller.
+- Health Check Endpoint: Available at /healthz, this endpoint is essential for monitoring
+the readiness and liveliness of the ingress controller. It plays a crucial role in
+maintaining the reliability and stability of the service.
 
-The Prometheus Metrics Endpoint provides a comprehensive set of metrics:
+Important Note: Both endpoints are hosted on a dedicated Go server, which listens on 
+port **10254**. By default, this server is configured for internal access only, ensuring 
+secure operations. To access these metrics externally, you can utilize kubectl port-forward 
+to forward the port to your local machine.
 
-    HTTP/HTTPS Request Count (http_https_request_count):
-        Description: Counts the total number of HTTP and HTTPS requests.
-        Labels: protocol
-
-    HTTP/HTTPS Request Status Code Count (http_https_request_status_code_count):
-        Description: Tracks the count of HTTP and HTTPS requests by their status code.
-        Labels: protocol, status_code
-
-    HTTP/HTTPS Request Duration (http_https_request_duration_seconds):
-        Description: Measures the duration of HTTP and HTTPS requests.
-        Labels: protocol
-        Buckets: Utilizes Prometheus's default bucket configuration.
-
-    Concurrent Requests (concurrent_requests):
-        Description: Indicates the current number of concurrent requests being processed.
-        Type: Gauge
-
-    Rate Limit Blocks (rate_limit_blocks):
-        Description: Counts the number of requests blocked due to rate limiting.
-        Labels: protocol, endpoint
-
-    TLS Fingerprint Blocks (tls_fingerprint_blocks):
-        Description: Monitors the number of requests blocked due to TLS fingerprinting.
-        Labels: protocol
-        Note: Future enhancements may include TLS fingerprint hash labeling.
-
-    User Agent Blocks (user_agent_blocks):
-        Description: Tracks the number of requests blocked based on the user agent.
-        Labels: protocol, user_agent
+For detailed information about each metric we track, 
+please refer to the [metrics](docs/existing-metrics.md) documentation.
 
 ## Ideas
 Don't hesitate to open an issue or pull request with your suggestions or ideas

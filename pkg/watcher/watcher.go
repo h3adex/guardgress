@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"github.com/bep/debounce"
 	"github.com/h3adex/guardgress/pkg/limithandler"
+	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
 	"github.com/ulule/limiter/v3"
 	"k8s.io/api/networking/v1"
@@ -27,6 +28,25 @@ type Payload struct {
 type Watcher struct {
 	Client       kubernetes.Interface
 	UpdateServer func(payload Payload)
+}
+
+var (
+	ingressesGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "watcher_ingresses_total",
+		Help: "Total number of ingresses",
+	})
+	ingressLimitersGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "watcher_ingress_limiters_total",
+		Help: "Total number of ingress limiters",
+	})
+	tlsCertificatesGauge = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "watcher_tls_certificates_total",
+		Help: "Total number of TLS certificates",
+	})
+)
+
+func init() {
+	prometheus.MustRegister(ingressesGauge, ingressLimitersGauge, tlsCertificatesGauge)
 }
 
 func New(
@@ -81,6 +101,10 @@ func (w *Watcher) onChange() {
 			}
 		}
 	}
+
+	ingressesGauge.Set(float64(len(ingresses.Items)))
+	ingressLimitersGauge.Set(float64(len(payload.IngressLimiters)))
+	tlsCertificatesGauge.Set(float64(len(payload.TlsCertificates)))
 
 	w.UpdateServer(payload)
 }
