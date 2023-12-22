@@ -5,6 +5,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"github.com/h3adex/guardgress/pkg/healthmetrics"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"io"
 	v14 "k8s.io/api/apps/v1"
@@ -14,6 +15,8 @@ import (
 	testClient "k8s.io/client-go/kubernetes/fake"
 	"net"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -22,11 +25,13 @@ import (
 var nginxIngressClassName = "nginx"
 
 func TestWatcherDetectChanges(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	healthMetricsPort := freePort()
+	ctx := context.Background()
 
 	go func() {
-		err := healthmetrics.New().Run(ctx)
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(healthMetricsPort))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
 		assert.NoError(t, err)
 	}()
 
@@ -315,7 +320,7 @@ func TestWatcherDetectChanges(t *testing.T) {
 
 	t.Run("test if watcher metrics are registered", func(t *testing.T) {
 		// check if metrics are working
-		res, err := http.Get("http://0.0.0.0:10254/metrics")
+		res, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/metrics", healthMetricsPort))
 		assert.NoError(t, err)
 		assert.Equal(t, 200, res.StatusCode)
 		bs, err := io.ReadAll(res.Body)
@@ -356,4 +361,19 @@ func waitForServer(ctx context.Context, port int) bool {
 		}
 	}
 	panic("impossible")
+}
+
+func freePort() int {
+	// Listen on a random port
+	listener, _ := net.Listen("tcp", ":0")
+	defer func(listener net.Listener) {
+		err := listener.Close()
+		if err != nil {
+			log.Error(err)
+		}
+	}(listener)
+
+	// Retrieve the address information
+	address := listener.Addr().(*net.TCPAddr)
+	return address.Port
 }

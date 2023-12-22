@@ -42,24 +42,22 @@ set to "guardgress" or with no `ingressClassName` set at all.
 
 ## Installation
 
-### With Helm
+### Using Helm
 ```shell
 helm repo add guardgress https://h3adex.github.io/guardgress
 helm repo update
 helm install guardgress guardgress/guardgress-ingress-controller --namespace guardgress --create-namespace
 ```
 
-### With K8s Manifests
+### Using Kubernetes Manifests
 ```shell
 git clone https://github.com/h3adex/guardgress
-# Creates Namespace,SA,CRB,CR,Deployment,Service(LoadBalancer)
-kubectl apply -f k8s/guardgress-deployment-svc.yaml
-# Creates HPA
-kubectl apply -f k8s/guardgress-deployment-hpa.yaml
+kubectl apply -f k8s/guardgress-deployment-svc.yaml  # Creates Namespace, SA, CRB, CR, Deployment, Service (LoadBalancer)
+kubectl apply -f k8s/guardgress-deployment-hpa.yaml  # Creates HPA
 ```
 
-Once installed, you can create ingress objects with the annotations described above. Examples
-are located here: [k8s/examples](k8s/examples).
+After installation, you can define ingress objects using the provided annotations.
+Example configurations are available here: [k8s/examples](k8s/examples).
 
 ## Known Limitations
 - Guardgress might not fully support certain functionalities provided by the Ingress API Object. 
@@ -71,10 +69,8 @@ aren't parsed accurately for user-agent configurations.
 
 ## Development
 ```sh
-# deploy to local kind cluster
-make dev kind
-# build image and push to azure registry
-make dev azure
+make dev kind # deploy to local kind cluster
+make dev azure # build image and push to azure registry
 ```
 This command facilitates container building and controller deployment on a kind cluster.
 I've successfully tested the functionality of this ingress-controller on an AKS cluster,
