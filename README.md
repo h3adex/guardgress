@@ -69,8 +69,9 @@ aren't parsed accurately for user-agent configurations.
 
 ## Development
 ```sh
-make dev kind # deploy to local kind cluster
-make dev azure # build image and push to azure registry
+make deploy-kind # deploy to local kind cluster
+make build-azure # build image and push to azure registry
+make help # list available commands
 ```
 This command facilitates container building and controller deployment on a kind cluster.
 I've successfully tested the functionality of this ingress-controller on an AKS cluster,

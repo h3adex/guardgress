@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: guardgress-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: guardgress-cr
+rules:
+- apiGroups: [""]
+  resources: ["services","secrets"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses",]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: guardgress-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: guardgress-cr
+subjects:
+- kind: ServiceAccount
+  name: guardgress-sa
+  namespace: default
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: guardgress-ingress-controller
+  namespace: default
+  labels:
+    app: guardgress-ingress-controller
+spec:
+  selector:
+    matchLabels:
+      app: guardgress-ingress-controller
+  template:
+    metadata:
+      labels:
+        app: guardgress-ingress-controller
+      annotations:
+        "prometheus.io/scrape": "true"
+        "prometheus.io/port": "10254"
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      serviceAccountName: guardgress-sa
+      containers:
+        - image: docker.io/guardgress:1.0.0-dev
+          name: guardgress-ingress-controller
+          imagePullPolicy: Never
+          env:
+            - name: PORT
+              value: "80"
+            - name: TLS_PORT
+              value: "443"
+            - name: HOST
+              value: "0.0.0.0"
+            - name: LOG_LEVEL
+              value: "debug"
+            - name: FORCE_LOCALHOST_CERT
+              value: "true"
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 5
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    guardgress/add-tls-fingerprint-header: "true"
+    guardgress/limit-period: "10-S"
+  name: whoami
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+  - host: whoami.local
+    http:
+      paths:
+      - backend:
+          service:
+            name: whoami
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - localhost
+    secretName: ingress-tls

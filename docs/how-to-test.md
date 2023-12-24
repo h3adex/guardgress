@@ -3,17 +3,17 @@
 After successfully deploying the controller, test its functionality by sending requests
 to the ingress controller.
 
-The [build-dev-env.sh](../build/build-kind.sh) script deploys whoami along with the matching ingress
-controller to the cluster. The script includes annotations necessary for
+The command ``make deploy-kind`` deploys whoami along with the matching ingress
+controller to a kind cluster. The script includes annotations necessary for
 the ingress controller's deployment. Running the script for the first time
 prompts the creation of self-signed TLS Certificates.
 
 To test, use the following curl commands:
 ```sh
 # HTTPS
-curl -k -H 'host: whoami.local' https://0.0.0.0:444
+curl -k -H 'host: whoami.local' https://0.0.0.0:443
 # HTTP
-curl -k -H 'host: whoami.local' http://0.0.0.0:81
+curl -k -H 'host: whoami.local' http://0.0.0.0:80
 ```
 
 When testing different ingresses, ensure to use the correct host header.
