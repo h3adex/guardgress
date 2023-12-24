@@ -13,12 +13,6 @@ nodes:
       - containerPort: 80
         hostPort: 80
         protocol: TCP
-      - containerPort: 81
-        hostPort: 81
-        protocol: TCP
-      - containerPort: 444
-        hostPort: 444
-        protocol: TCP
       - containerPort: 443
         hostPort: 443
         protocol: TCP
