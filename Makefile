@@ -41,10 +41,9 @@ load-image:
 	kind load docker-image --name="${DEV_CLUSTER}" "${DEV_IMAGE}"
 
 deploy:
-	@if [ ! -f "bin/tls.key" ] || [ ! -f "bin/tls.crt" ]; then \
-		mkdir -p bin; \
-		openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout bin/tls.key -out bin/tls.crt; \
-		kubectl create secret tls ingress-tls --key bin/tls.key --cert bin/tls.crt; \
+	@if [ ! -f "build/tls.key" ] || [ ! -f "build/tls.crt" ]; then \
+		openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout build/tls.key -out build/tls.crt; \
+		kubectl create secret tls ingress-tls --key build/tls.key --cert build/tls.crt; \
 	else \
 		echo "[dev-env] TLS secret files already exist. Skipping generation."; \
 	fi; \
@@ -83,7 +82,7 @@ build-azure:
 	az acr build --image "${DEV_IMAGE}" --registry "${ACR_REGISTRY}" --file Dockerfile .
 
 load-test:
-	echo "GET https://0.0.0.0:443/" | vegeta attack -duration=5s -insecure -rate=100/1s -header="Host: whoami.local"
+	echo "GET https://0.0.0.0:443" | vegeta attack -duration=10m -insecure -rate=15/1s -header="Host: whoami.local" -header="User-Agent: chrome101"
 
 clean:
 	@kind delete cluster --name ${DEV_CLUSTER}
@@ -93,7 +92,7 @@ help:
 	@echo "Usage: make [target]"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  all               - Run the complete development environment setup, including Kind cluster deployment and Azure image building."
+	@echo "  deploy-kind       - Run the complete development environment setup, including Kind cluster deployment and image building."
 	@echo "  setup             - Check and set up necessary dependencies (kind, kubectl, helm)."
 	@echo "  build-image       - Build the Docker image using the provided Dockerfile. Image name: ${DEV_IMAGE}."
 	@echo "  create-cluster    - Create a new Kind Kubernetes cluster if it doesn't exist, or use the existing cluster. Cluster name: ${DEV_CLUSTER}."

@@ -63,11 +63,10 @@ var (
 		Help: "Number of requests blocked due to rate limiting",
 	}, []string{"protocol", "endpoint"})
 
-	// TODO: Add tls fingerprint hash to labels. Not sure which value makes sense
 	tlsFingerprintBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "tls_fingerprint_blocks",
 		Help: "Number of requests blocked due to TLS fingerprinting",
-	}, []string{"protocol"})
+	}, []string{"protocol", "fingerprint"})
 
 	userAgentBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "user_agent_blocks",
@@ -177,7 +176,11 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 		case UserAgentForbiddenIdentifier:
 			userAgentBlocks.WithLabelValues(protocol, c.Request.UserAgent()).Inc()
 		case TlsFingerprintForbiddenIdentifier:
-			tlsFingerprintBlocks.WithLabelValues(protocol).Inc()
+			fingerprint, ok := c.Value("fingerprint").(string)
+			if ok {
+				tlsFingerprintBlocks.WithLabelValues(protocol, fingerprint).Inc()
+			}
+
 		}
 
 		concurrentReqGauge.Dec()
@@ -217,8 +220,8 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 			return InternalErrorIdentifier
 		}
 
-		if !annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello) {
-			log.Errorf("TLS fingerprint not allowed: %s", parsedClientHello.Ja3)
+		if ok, blockedFp := annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello); !ok {
+			ctx.Set("fingerprint", blockedFp)
 			ctx.Writer.WriteHeader(http.StatusForbidden)
 			_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 			return TlsFingerprintForbiddenIdentifier
