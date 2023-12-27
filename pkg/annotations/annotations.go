@@ -71,38 +71,43 @@ func isUserAgentListed(userAgentList string, userAgent string, listType string) 
 	return false
 }
 
-func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ParsedClientHello) bool {
+func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ParsedClientHello) (bool, string) {
 	whitelistAnnotation := annotations[TLSFingerprintWhitelist]
 	blacklistAnnotation := annotations[TLSFingerprintBlackList]
 
-	if isTLSFingerprintListed(whitelistAnnotation, parsedClientHello, "whitelist") {
-		return true
+	fingerprint := ""
+	// fingerprint is allowed if it exists in whitelist
+	if ok, fp := isTLSFingerprintListed(whitelistAnnotation, parsedClientHello); ok {
+		fingerprint = fp
+		return true, fp
 	}
 
-	if isTLSFingerprintListed(blacklistAnnotation, parsedClientHello, "blacklist") {
-		return false
+	// fingerprint is not allowed if it exists in blacklist
+	if ok, fp := isTLSFingerprintListed(blacklistAnnotation, parsedClientHello); ok {
+		return false, fp
 	}
 
-	return len(whitelistAnnotation) == 0
+	// fingerprint is allowed if whitelist is empty and blacklist is not existent
+	return len(whitelistAnnotation) == 0, fingerprint
 }
 
-func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ParsedClientHello, listType string) bool {
+func isTLSFingerprintListed(tlsFingerprintList string, parsedClientHello models.ParsedClientHello) (bool, string) {
 	if tlsFingerprintList == "" {
-		return false
+		return false, ""
 	}
 
 	for _, tlsBlacklistValue := range strings.Split(tlsFingerprintList, ",") {
 		if tlsBlacklistValue == parsedClientHello.Ja3 || tlsBlacklistValue == parsedClientHello.Ja3n || tlsBlacklistValue == algorithms.Ja3Digest(parsedClientHello.Ja3) {
 			log.Errorf("Ja3 fingerprint got blacklisted: %s", parsedClientHello.Ja3)
-			return true
+			return true, parsedClientHello.Ja3
 		}
 		if tlsBlacklistValue == parsedClientHello.Ja4 || tlsBlacklistValue == parsedClientHello.Ja4h {
 			log.Errorf("Ja4 fingerprint got blacklisted: %s", parsedClientHello.Ja4)
-			return true
+			return true, parsedClientHello.Ja4
 		}
 	}
 
-	return false
+	return false, ""
 }
 
 func IsPathWhiteListed(annotations map[string]string, path string) bool {

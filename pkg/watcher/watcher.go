@@ -59,6 +59,18 @@ func New(
 	}
 }
 
+func (p *Payload) countIngressLimiters() float64 {
+	var count float64 = 0
+	for _, ingress := range p.IngressLimiters {
+		if ingress == nil {
+			continue
+		}
+		count++
+	}
+
+	return count
+}
+
 func (w *Watcher) onChange() {
 	log.Debug("Updating routing table")
 
@@ -103,7 +115,7 @@ func (w *Watcher) onChange() {
 	}
 
 	ingressesGauge.Set(float64(len(ingresses.Items)))
-	ingressLimitersGauge.Set(float64(len(payload.IngressLimiters)))
+	ingressLimitersGauge.Set(payload.countIngressLimiters())
 	tlsCertificatesGauge.Set(float64(len(payload.TlsCertificates)))
 
 	w.UpdateServer(payload)
@@ -165,7 +177,6 @@ func (w *Watcher) Run(ctx context.Context) error {
 		wg.Done()
 	}()
 
-	log.Debug("Started all watchers")
 	return nil
 }
 

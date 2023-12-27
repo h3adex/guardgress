@@ -7,3 +7,10 @@ datasources:
         url: http://prometheus-server.prometheus.svc.cluster.local
         access: proxy
         isDefault: true
+persistence:
+  enabled: true
+#dashboards:
+#  default:
+#    custom-dashboard:
+#      file: /build/guardgress-dashboard.json
+

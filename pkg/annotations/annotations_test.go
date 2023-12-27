@@ -71,13 +71,14 @@ func TestTLSFingerprintWhiteBlacklistAnnotations(t *testing.T) {
 		}
 
 		for key, val := range cases {
-			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
+			ok, _ := IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
 				Ja3:  key,
 				Ja3H: key,
 				Ja3n: key,
 				Ja4:  key,
 				Ja4h: key,
-			}))
+			})
+			assert.Equal(t, val, ok)
 		}
 	})
 
@@ -93,13 +94,14 @@ func TestTLSFingerprintWhiteBlacklistAnnotations(t *testing.T) {
 		}
 
 		for key, val := range cases {
-			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
+			ok, _ := IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
 				Ja3:  key,
 				Ja3H: key,
 				Ja3n: key,
 				Ja4:  key,
 				Ja4h: key,
-			}))
+			})
+			assert.Equal(t, val, ok)
 		}
 	})
 
@@ -116,13 +118,14 @@ func TestTLSFingerprintWhiteBlacklistAnnotations(t *testing.T) {
 		}
 
 		for key, val := range cases {
-			assert.Equal(t, val, IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
+			ok, _ := IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
 				Ja3:  key,
 				Ja3H: key,
 				Ja3n: key,
 				Ja4:  key,
 				Ja4h: key,
-			}))
+			})
+			assert.Equal(t, val, ok)
 		}
 	})
 }

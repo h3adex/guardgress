@@ -1,11 +1,12 @@
 .idea/
-bin/
 # Testing context behavior here
 cmd/server/main_test.go
 # Testing helm
 # helm install guardgress  --dry-run . > tmp.yaml
 helm/guardgress/tmp.yaml
-
 # used to determine my test coverage
 c.out
 coverage.out
+# test certs
+tls.key
+tls.crt
