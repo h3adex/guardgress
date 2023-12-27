@@ -3,7 +3,6 @@ replicaCount: 1
 image:
   repository: ghcr.io/h3adex/guardgress
   pullPolicy: IfNotPresent
-  tag: "1.0.0-alpha"
 
 imagePullSecrets: []
 nameOverride: ""
