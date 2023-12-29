@@ -97,6 +97,7 @@ metadata:
   annotations:
     guardgress/add-tls-fingerprint-header: "true"
     guardgress/limit-period: "10-S"
+    # guardgress/whitelist-ip-source-range: "172.1.0.2/24"
   name: whoami
   namespace: default
 spec:

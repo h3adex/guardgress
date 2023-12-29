@@ -33,6 +33,7 @@ const (
 	InternalErrorIdentifier
 	UserAgentForbiddenIdentifier
 	TlsFingerprintForbiddenIdentifier
+	IPForbiddenIdentifier
 	RateLimitedErrorIdentifier
 )
 
@@ -62,6 +63,11 @@ var (
 		Name: "rate_limit_blocks",
 		Help: "Number of requests blocked due to rate limiting",
 	}, []string{"protocol", "endpoint"})
+
+	ipForbiddenBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "ip_forbidden_blocks",
+		Help: "Number of requests blocked due to ip blocks",
+	}, []string{"protocol"})
 
 	tlsFingerprintBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "tls_fingerprint_blocks",
@@ -169,8 +175,6 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 		reqStatusCodeCounter.WithLabelValues(protocol, statusCode).Inc()
 
 		switch errorIdentifier {
-		case NoErrorIdentifier, InternalErrorIdentifier:
-			return
 		case RateLimitedErrorIdentifier:
 			rateLimitBlocks.WithLabelValues(protocol, c.Request.RequestURI).Inc()
 		case UserAgentForbiddenIdentifier:
@@ -180,7 +184,11 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 			if ok {
 				tlsFingerprintBlocks.WithLabelValues(protocol, fingerprint).Inc()
 			}
-
+		case IPForbiddenIdentifier:
+			ipForbiddenBlocks.WithLabelValues(protocol).Inc()
+		default:
+			// NoErrorIdentifier, InternalErrorIdentifier:
+			return
 		}
 
 		concurrentReqGauge.Dec()
@@ -189,16 +197,19 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 	return handler
 }
 
-// proxyRequest proxies the request to the appropriate backend service.
+// proxyRequest handles the forwarding of incoming requests to the designated backend service.
+// This function also manages various security and redirection protocols based on request attributes and annotations.
 func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 	host := ctx.Request.Host
 	requestURI := ctx.Request.RequestURI
 	clientIP := ctx.ClientIP()
 
-	// Retrieve backend service URL and annotations
+	// Retrieve the backend service URL, annotations, and check for any routing errors.
+	// This includes validating if the request can be serviced by a backend and if it adheres to rate limits.
 	svcURL, parsedAnnotations, routingError := s.RoutingTable.GetBackend(host, requestURI, clientIP)
 	log.Debugf("Parsed annotations: %+v", parsedAnnotations)
 
+	// Handle any routing errors, sending appropriate HTTP responses and logging the issues.
 	if routingError.Error != nil {
 		log.Errorf("Routing error: %v", routingError.Error)
 		ctx.Writer.WriteHeader(routingError.StatusCode)
@@ -210,9 +221,36 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 		return InternalErrorIdentifier
 	}
 
-	// Process TLS requests
-	if isHTTPS {
-		parsedClientHello, err := s.processTLSRequest(ctx, parsedAnnotations)
+	// Redirect HTTP requests to HTTPS if the 'Force SSL' annotation is present and true.
+	forceSSL, forceSSLExists := parsedAnnotations[annotations.ForceSSLRedirect]
+	if !isHTTPS && forceSSLExists && forceSSL == "true" {
+		httpsURL := fmt.Sprintf("https://%s%s", host, requestURI)
+		log.Debugf("Redirecting HTTP request to HTTPS: %s", httpsURL)
+		http.Redirect(ctx.Writer, ctx.Request, httpsURL, http.StatusMovedPermanently)
+		return NoErrorIdentifier
+	}
+
+	// Evaluate if the client IP is authorized to access the service based on annotations.
+	ipIsAllowed, err := annotations.IsIpAllowed(parsedAnnotations, clientIP)
+	if err != nil {
+		log.Errorf("Error checking if IP is allowed: %v", err)
+		ctx.Writer.WriteHeader(http.StatusInternalServerError)
+		_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
+		return InternalErrorIdentifier
+	}
+
+	// Deny access if the client IP is not authorized.
+	if !ipIsAllowed {
+		log.Debugf("IP not allowed: %s", clientIP)
+		ctx.Writer.WriteHeader(http.StatusUnauthorized)
+		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
+		return IPForbiddenIdentifier
+	}
+	log.Debugf("IP is allowed: %s", clientIP)
+
+	// Validate TLS fingerprint if the connection is HTTPS and the corresponding annotation exists.
+	if isHTTPS && annotations.TlsFingerprintAnnotationExists(parsedAnnotations) {
+		parsedClientHello, err := s.parseClientHello(ctx, parsedAnnotations)
 		if err != nil {
 			log.Errorf("Error processing TLS request: %v", err)
 			ctx.Writer.WriteHeader(http.StatusInternalServerError)
@@ -220,23 +258,16 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 			return InternalErrorIdentifier
 		}
 
+		// Block the request if the TLS fingerprint is not allowed.
 		if ok, blockedFp := annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello); !ok {
 			ctx.Set("fingerprint", blockedFp)
 			ctx.Writer.WriteHeader(http.StatusForbidden)
 			_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 			return TlsFingerprintForbiddenIdentifier
 		}
-	} else {
-		// Handle force SSL redirection
-		if parsedAnnotations[annotations.ForceSSLRedirect] == "true" {
-			httpsURL := fmt.Sprintf("https://%s%s", host, requestURI)
-			log.Debugf("Redirecting HTTP request to HTTPS: %s", httpsURL)
-			http.Redirect(ctx.Writer, ctx.Request, httpsURL, http.StatusMovedPermanently)
-			return NoErrorIdentifier
-		}
 	}
 
-	// Check if request is allowed
+	// Check if the user-agent is permitted to access the service.
 	if !annotations.IsUserAgentAllowed(parsedAnnotations, ctx.Request.UserAgent()) {
 		log.Warnf("Request not allowed: %s", requestURI)
 		ctx.Writer.WriteHeader(http.StatusForbidden)
@@ -244,13 +275,13 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 		return UserAgentForbiddenIdentifier
 	}
 
-	// Proxy the request to the backend service
+	// Finally, forward the validated request to the backend service.
 	s.proxyToBackend(ctx, svcURL, host)
 
 	return NoErrorIdentifier
 }
 
-func (s Server) processTLSRequest(ctx *gin.Context, parsedAnnotations map[string]string) (models.ParsedClientHello, error) {
+func (s Server) parseClientHello(ctx *gin.Context, parsedAnnotations map[string]string) (models.ParsedClientHello, error) {
 	parsedClientHello, err := models.ParseClientHello(ctx)
 	if err != nil {
 		return models.ParsedClientHello{}, fmt.Errorf("unable to parse client hello: %w", err)

@@ -5,6 +5,8 @@ import (
 	"github.com/h3adex/guardgress/pkg/algorithms"
 	"github.com/h3adex/guardgress/pkg/models"
 	log "github.com/sirupsen/logrus"
+	"github.com/yl2chen/cidranger"
+	"net"
 	"regexp"
 	"strings"
 )
@@ -16,6 +18,7 @@ const (
 	TLSFingerprintBlackList = "guardgress/tls-fingerprint-blacklist"
 	AddTLSFingerprintHeader = "guardgress/add-tls-fingerprint-header"
 	ForceSSLRedirect        = "guardgress/force-ssl-redirect"
+	WhitelistIpSourceRange  = "guardgress/whitelist-ip-source-range"
 	LimitIpWhitelist        = "guardgress/limit-ip-whitelist"
 	LimitPathWhitelist      = "guardgress/limit-path-whitelist"
 	LimitRedisStore         = "guardgress/limit-redis-store-url"
@@ -35,6 +38,28 @@ const (
 	// * 2000 reqs/day: "2000-D"
 	LimitPeriod = "guardgress/limit-period"
 )
+
+func IsIpAllowed(annotations map[string]string, ip string) (bool, error) {
+	whiteListSourceRange, exists := annotations[WhitelistIpSourceRange]
+
+	if !exists {
+		return true, nil
+	}
+
+	ranger := cidranger.NewPCTrieRanger()
+	for _, network := range strings.Split(whiteListSourceRange, ",") {
+		_, parsedNetwork, err := net.ParseCIDR(network)
+		if err != nil {
+			return false, err
+		}
+		err = ranger.Insert(cidranger.NewBasicRangerEntry(*parsedNetwork))
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return ranger.Contains(net.ParseIP(ip))
+}
 
 func IsUserAgentAllowed(annotations map[string]string, userAgent string) bool {
 	whitelistAnnotation := annotations[UserAgentWhitelist]
@@ -69,6 +94,13 @@ func isUserAgentListed(userAgentList string, userAgent string, listType string) 
 		}
 	}
 	return false
+}
+
+func TlsFingerprintAnnotationExists(annotations map[string]string) bool {
+	_, whitelistExists := annotations[TLSFingerprintWhitelist]
+	_, blacklistExists := annotations[TLSFingerprintBlackList]
+	_, addTlsHeaderExists := annotations[AddTLSFingerprintHeader]
+	return whitelistExists || blacklistExists || addTlsHeaderExists
 }
 
 func IsTLSFingerprintAllowed(annotations map[string]string, parsedClientHello models.ParsedClientHello) (bool, string) {

@@ -100,14 +100,6 @@ func TestHTTPRequest(t *testing.T) {
 		err = res.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, mockServerResponse, string(bs))
-
-		/*		// check if metrics are working
-				res, err = http.Get(fmt.Sprintf("http://%s/metrics", healthMetricsServerAddress))
-				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
-				bs, err = io.ReadAll(res.Body)
-				assert.NoError(t, err)
-				assert.True(t, strings.ContainsAny(string(bs), "http_https_request_status_code_count{protocol=\"http\""))*/
 	})
 }
 
@@ -1115,6 +1107,120 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 	assert.True(t, strings.ContainsAny("https://127.0.0.1", err.Error()))
 }
 
+func TestHTTPSRequestIPWhitelistSourceRange(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/whitelist-ip-source-range": "192.168.0.0/24,192.169.0.0/24",
+	}
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		_ = srv.Run(ctx)
+	}()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
+	waitForServer(ctx, reverseProxyConfig.Port)
+
+	t.Run("test if ip whitelist source range works", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 401, res.StatusCode)
+	})
+}
+
+func TestHTTPSRequestIPWhitelistSourceRangeError(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/whitelist-ip-source-range": "192.168.ABC.ABC/24",
+	}
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		_ = srv.Run(ctx)
+	}()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
+	waitForServer(ctx, reverseProxyConfig.Port)
+
+	t.Run("test if ip whitelist source range throws error with faulty annotation", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	})
+}
+
 // This is the last test which tracks if the metrics are working
 func TestCustomPrometheusMetrics(t *testing.T) {
 	healthMetricsPort := freePort()
@@ -1144,6 +1250,7 @@ func TestCustomPrometheusMetrics(t *testing.T) {
 		"concurrent_requests",
 		"rate_limit_blocks",
 		"user_agent_blocks",
+		"ip_forbidden_blocks",
 	}
 
 	for _, metric := range metricsWhichShouldBePresent {
