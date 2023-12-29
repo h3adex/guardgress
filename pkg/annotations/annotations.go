@@ -83,7 +83,8 @@ func isUserAgentListed(userAgentList string, userAgent string, listType string) 
 
 	for _, uaPattern := range strings.Split(userAgentList, ",") {
 		log.Debug(fmt.Sprintf("Matching user agent %s with pattern %s", userAgent, uaPattern))
-		matched, err := regexp.MatchString(uaPattern, userAgent)
+		//  match user-agents regardless of their case (uppercase or lowercase) by using (?i)
+		matched, err := regexp.MatchString(`(?i)`+uaPattern, userAgent)
 		if err != nil {
 			log.Errorf("Error matching user agent: %s", err)
 			continue

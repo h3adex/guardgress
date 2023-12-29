@@ -216,6 +216,26 @@ func TestUserAgentWhiteBlackListAnnotations(t *testing.T) {
 			assert.Equal(t, val, IsUserAgentAllowed(mockAnnotations, key))
 		}
 	})
+
+	t.Run("test user-agent blacklist should not be case-sensitive", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/user-agent-blacklist": "Firefox/121.0,chrome/121.0,chrome/122.*",
+		}
+		cases := map[string]bool{
+			"Firefox/121.0":   false,
+			"firefox/121.0":   false,
+			"Firefox/122.0":   true,
+			"chrome/121.0":    false,
+			"ChRome/121.0":    false,
+			"ChRome/122.1":    false,
+			"ChRomE/122.9":    false,
+			"ChRomEeee/122.1": true,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsUserAgentAllowed(mockAnnotations, key))
+		}
+	})
 }
 
 func TestWhiteListIPSourceRangeAnnotations(t *testing.T) {
