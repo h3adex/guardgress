@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/api/networking/v1"
 	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -182,6 +183,7 @@ func TestGetBackendPathTypePrefix(t *testing.T) {
 	})
 }
 
+// PathTypeImplementationSpecific annotation should work as PathTypePrefix
 func TestGetBackendPathTypeImplementationSpecific(t *testing.T) {
 	routingTable := RoutingTable{
 		Ingresses: &v1.IngressList{
@@ -489,7 +491,176 @@ func TestGetBackendWithMultipleIngressesInDifferentNamespaces(t *testing.T) {
 	})
 }
 
-func TestGetBackendJenkinsMock(t *testing.T) {
+func TestRoutingWithMultipleIngressPaths(t *testing.T) {
+	pathTypePrefix := v1.PathTypePrefix
+	ingressPathTypePrefix := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace:   "default",
+			Annotations: map[string]string{},
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "example.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathTypePrefix,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "web-shop",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+	ingressPathTypePrefix2 := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace:   "default",
+			Annotations: map[string]string{},
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "example.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/products",
+									PathType: &pathTypePrefix,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "products",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 8080,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+	ingressNoPathType := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+			Annotations: map[string]string{
+				"guardgress/user-agent-blacklist": "chrome101",
+			},
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "example.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path: "/admin",
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "admin-dashboard",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: 9090,
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+
+	routingTable := RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items:    []v1.Ingress{ingressPathTypePrefix, ingressNoPathType, ingressPathTypePrefix2},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{nil, nil, nil},
+	}
+
+	t.Run("test if exact path match gets selected at first /admin", func(t *testing.T) {
+		// admin route should be matched first since we are checking pathType Exact first
+		url, annotations, err := routingTable.GetBackend("example.guardgress.com", "/admin", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) > 0)
+		assert.True(t, strings.Contains(url.Host, "admin-dashboard"))
+	})
+
+	t.Run("test if path type prefix gets selected /products", func(t *testing.T) {
+		url, annotations, err := routingTable.GetBackend("example.guardgress.com", "/products", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) == 0)
+		assert.True(t, strings.Contains(url.Host, "products"))
+
+		url, annotations, err = routingTable.GetBackend("example.guardgress.com", "/products/", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) == 0)
+		assert.True(t, strings.Contains(url.Host, "products"))
+
+		url, annotations, err = routingTable.GetBackend("example.guardgress.com", "/products/abc", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) == 0)
+		assert.True(t, strings.Contains(url.Host, "products"))
+	})
+
+	t.Run("test if path type prefix gets selected at last /", func(t *testing.T) {
+		// admin route should be matched at last since it is not path type exact
+		url, annotations, err := routingTable.GetBackend("example.guardgress.com", "/", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) == 0)
+		assert.True(t, strings.Contains(url.Host, "web-shop"))
+
+		url, annotations, err = routingTable.GetBackend("example.guardgress.com", "/blog", "")
+		assert.NoError(t, err.Error)
+		assert.True(t, len(annotations) == 0)
+		assert.True(t, strings.Contains(url.Host, "web-shop"))
+
+	})
+
+}
+
+func TestGetBackendJenkinsRealLifeExample(t *testing.T) {
 	pathTypeImplementationSpecific := v1.PathTypeImplementationSpecific
 	jenkinsMock := v1.Ingress{
 		TypeMeta: v12.TypeMeta{},

@@ -322,7 +322,7 @@ func TestWatcherDetectChanges(t *testing.T) {
 		// check if metrics are working
 		res, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/metrics", healthMetricsPort))
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 		bs, err := io.ReadAll(res.Body)
 		t.Log(string(bs))
 		assert.NoError(t, err)

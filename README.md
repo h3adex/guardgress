@@ -93,8 +93,6 @@ For detailed information about each metric we track,
 please refer to the [metrics](docs/existing-metrics.md) documentation.
 
 ## Known Limitations
-- Guardgress might not fully support certain functionalities provided by the Ingress API Object.
-  Please open an Issue if you encounter any problems.
 - We ought to transition to Custom Resource Definitions (CRD) to store
   configuration information instead of relying solely on annotations.
   Presently, certain annotations, particularly those containing commas,

@@ -214,7 +214,7 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 		log.Errorf("Routing error: %v", routingError.Error)
 		ctx.Writer.WriteHeader(routingError.StatusCode)
 		_, _ = ctx.Writer.Write([]byte(routingError.Error.Error()))
-		if routingError.StatusCode == 429 {
+		if routingError.StatusCode == http.StatusTooManyRequests {
 			return RateLimitedErrorIdentifier
 		}
 
@@ -257,7 +257,6 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 			_, _ = ctx.Writer.Write([]byte(InternalErrorResponse))
 			return InternalErrorIdentifier
 		}
-
 		// Block the request if the TLS fingerprint is not allowed.
 		if ok, blockedFp := annotations.IsTLSFingerprintAllowed(parsedAnnotations, parsedClientHello); !ok {
 			ctx.Set("fingerprint", blockedFp)
