@@ -307,14 +307,6 @@ func (s Server) proxyToBackend(ctx *gin.Context, svcURL *url.URL, host string) {
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
-func (s Server) healthz(ctx *gin.Context) {
-	ctx.Writer.WriteHeader(http.StatusOK)
-	_, err := ctx.Writer.Write([]byte("ok"))
-	if err != nil {
-		log.Error("Unable to write healthz response: ", err.Error())
-	}
-}
-
 // shutdownServerOnContextCancel shuts down the server when the context is canceled.
 func (s Server) shutdownServerOnContextCancel(ctx context.Context, server *http.Server, serverType string) {
 	<-ctx.Done()
