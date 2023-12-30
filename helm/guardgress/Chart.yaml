@@ -3,6 +3,6 @@ name: guardgress-ingress-controller
 description: Guardgress showcases a Web Application Firewall (WAF) integration within a Kubernetes Ingress Controller.
 type: application
 # chart version
-version: 1.0.2
+version: 1.0.3
 # image version
-appVersion: "1.0.2-alpha"
+appVersion: "1.0.3-alpha"

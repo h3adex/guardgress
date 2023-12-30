@@ -2,10 +2,6 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    # The following user agents are blocked on this ingress resource.
-    "guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*"
-    # The following JA3,JA4 fingerprints are blocked on this ingress resource.
-    "guardgress/tls-fingerprint-blacklist": "d41d8cd98f00b204e9800998ecf8427a,t13d1715h2_5b57614c22b0_93c746dc12af"
     # We are allowing 10 requests per second per IP address.
     "guardgress/limit-period": "10-S"
     # The following IP addresses are allowed to bypass the rate limit.
@@ -26,6 +22,60 @@ spec:
                 port:
                   number: 8080
             path: /
+            pathType: Prefix
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # Only allow the following IP addresses to access the admin dashboard.
+    "guardgress/whitelist-ip-source-range": "192.168.1.0/8,192.170.1.0/8"
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /admin
+            pathType: Exact
+  tls:
+    - hosts:
+        - shop.guardgress.com
+      secretName: shop-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    # The following user agents are blocked on the product routes.
+    "guardgress/user-agent-blacklist": "curl/7.64.*,curl/7.65.*"
+    # The following JA3,JA4 fingerprints are blocked on the product routes.
+    "guardgress/tls-fingerprint-blacklist": "d41d8cd98f00b204e9800998ecf8427a,t13d1715h2_5b57614c22b0_93c746dc12af"
+  name: shop
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: shop.guardgress.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: shop
+                port:
+                  number: 8080
+            path: /products/
             pathType: Prefix
   tls:
     - hosts:

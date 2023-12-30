@@ -216,4 +216,87 @@ func TestUserAgentWhiteBlackListAnnotations(t *testing.T) {
 			assert.Equal(t, val, IsUserAgentAllowed(mockAnnotations, key))
 		}
 	})
+
+	t.Run("test user-agent blacklist should not be case-sensitive", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/user-agent-blacklist": "Firefox/121.0,chrome/121.0,chrome/122.*",
+		}
+		cases := map[string]bool{
+			"Firefox/121.0":   false,
+			"firefox/121.0":   false,
+			"Firefox/122.0":   true,
+			"chrome/121.0":    false,
+			"ChRome/121.0":    false,
+			"ChRome/122.1":    false,
+			"ChRomE/122.9":    false,
+			"ChRomEeee/122.1": true,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsUserAgentAllowed(mockAnnotations, key))
+		}
+	})
+}
+
+func TestWhiteListIPSourceRangeAnnotations(t *testing.T) {
+	t.Run("test whitelist ip source range /24", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/whitelist-ip-source-range": "192.168.0.0/24,192.169.0.0/24",
+		}
+		cases := map[string]bool{
+			"192.168.0.0":   true,
+			"192.168.0.254": true,
+			"192.168.1.254": false,
+			"192.169.0.0":   true,
+			"192.169.0.1":   true,
+			"192.169.0.254": true,
+			"192.169.1.254": false,
+			"192.180.0.0":   false,
+			"192.180.1.0":   false,
+		}
+
+		for key, val := range cases {
+			allowed, err := IsIpAllowed(mockAnnotations, key)
+			assert.NoError(t, err)
+			assert.Equal(t, val, allowed)
+		}
+	})
+
+	t.Run("test whitelist ip source range /16", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/whitelist-ip-source-range": "192.168.0.0/16,192.169.0.0/16",
+		}
+		cases := map[string]bool{
+			"192.168.0.0":   true,
+			"192.168.0.254": true,
+			"192.168.1.254": true,
+			"192.169.0.0":   true,
+			"192.169.0.1":   true,
+			"192.169.0.254": true,
+			"192.169.1.254": true,
+			"192.180.0.0":   false,
+			"192.180.1.0":   false,
+		}
+
+		for key, val := range cases {
+			allowed, err := IsIpAllowed(mockAnnotations, key)
+			assert.NoError(t, err)
+			assert.Equal(t, val, allowed)
+		}
+	})
+
+	t.Run("test whitelist ip source range /error", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/whitelist-ip-source-range": "192.168.AVC.ABC/8",
+		}
+
+		cases := map[string]bool{
+			"192.168.0.0": true,
+		}
+
+		for key := range cases {
+			_, err := IsIpAllowed(mockAnnotations, key)
+			assert.Error(t, err)
+		}
+	})
 }

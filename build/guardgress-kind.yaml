@@ -97,7 +97,7 @@ metadata:
   annotations:
     guardgress/add-tls-fingerprint-header: "true"
     guardgress/limit-period: "10-S"
-  name: whoami
+  name: whoami-limit-period-10-s
   namespace: default
 spec:
   ingressClassName: guardgress
@@ -111,8 +111,58 @@ spec:
             port:
               number: 80
         path: /
-        pathType: ImplementationSpecific
+        pathType: Prefix
   tls:
   - hosts:
     - localhost
     secretName: ingress-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    guardgress/whitelist-ip-source-range: "172.1.0.2/24"
+  name: whoami-whitelist-ip-source-range
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: whoami.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
+            path: "/blocked-ip"
+            pathType: Exact
+  tls:
+    - hosts:
+        - localhost
+      secretName: ingress-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    guardgress/user-agent-blacklist: "Firefox/121.0"
+  name: whoami-blocked-ua
+  namespace: default
+spec:
+  ingressClassName: guardgress
+  rules:
+    - host: whoami.local
+      http:
+        paths:
+          - backend:
+              service:
+                name: whoami
+                port:
+                  number: 80
+            path: "/blocked-ua"
+            pathType: Exact
+  tls:
+    - hosts:
+        - localhost
+      secretName: ingress-tls

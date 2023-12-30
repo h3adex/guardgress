@@ -29,7 +29,8 @@ import (
 	"time"
 )
 
-var mockServerResponse = "mock-svc"
+var defaultRouteServerResponse = "mock-svc"
+var adminRouteServerResponse = "mock-svc-admin-route"
 
 type MockServerConfig struct {
 	Host string
@@ -94,20 +95,12 @@ func TestHTTPRequest(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 		bs, err := io.ReadAll(res.Body)
 		assert.NoError(t, err)
 		err = res.Body.Close()
 		assert.NoError(t, err)
-		assert.Equal(t, mockServerResponse, string(bs))
-
-		/*		// check if metrics are working
-				res, err = http.Get(fmt.Sprintf("http://%s/metrics", healthMetricsServerAddress))
-				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
-				bs, err = io.ReadAll(res.Body)
-				assert.NoError(t, err)
-				assert.True(t, strings.ContainsAny(string(bs), "http_https_request_status_code_count{protocol=\"http\""))*/
+		assert.Equal(t, defaultRouteServerResponse, string(bs))
 	})
 }
 
@@ -161,20 +154,12 @@ func TestHTTPSRequest(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 		bs, err := io.ReadAll(res.Body)
 		assert.NoError(t, err)
 		err = res.Body.Close()
 		assert.NoError(t, err)
-		assert.Equal(t, mockServerResponse, string(bs))
-
-		// check if metrics are working
-		/*		res, err = http.Get(fmt.Sprintf("http://%s/metrics", healthMetricsServerAddress))
-				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
-				bs, err = io.ReadAll(res.Body)
-				assert.NoError(t, err)
-				assert.True(t, strings.ContainsAny(string(bs), "http_https_request_status_code_count{protocol=\"https\""))*/
+		assert.Equal(t, defaultRouteServerResponse, string(bs))
 	})
 }
 
@@ -228,7 +213,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 
 	res, err := http.DefaultClient.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 	assert.NoError(t, err)
 	err = res.Body.Close()
 	assert.NoError(t, err)
@@ -245,7 +230,7 @@ func TestTlsFingerprintingAddHeader(t *testing.T) {
 	// should be forbidden
 	res, err = http.DefaultClient.Do(req)
 	assert.NoError(t, err)
-	assert.Equal(t, 403, res.StatusCode)
+	assert.Equal(t, http.StatusForbidden, res.StatusCode)
 }
 
 func TestUserAgentBlacklist(t *testing.T) {
@@ -306,7 +291,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
 	}
 
 	t.Run("test user_agent curl/7.64.1 should be blocked", func(t *testing.T) {
@@ -325,7 +310,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 403, res.StatusCode)
+			assert.Equal(t, http.StatusForbidden, res.StatusCode)
 		}
 	})
 
@@ -345,7 +330,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 403, res.StatusCode)
+			assert.Equal(t, http.StatusForbidden, res.StatusCode)
 		}
 	})
 
@@ -365,7 +350,7 @@ func TestUserAgentBlacklist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 	})
 }
@@ -422,7 +407,7 @@ func TestUserAgentWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 	})
 
@@ -442,7 +427,7 @@ func TestUserAgentWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 	})
 
@@ -462,7 +447,7 @@ func TestUserAgentWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 403, res.StatusCode)
+			assert.Equal(t, http.StatusForbidden, res.StatusCode)
 		}
 	})
 }
@@ -520,7 +505,7 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 	})
 
@@ -540,7 +525,7 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 200, res.StatusCode)
+			assert.Equal(t, http.StatusOK, res.StatusCode)
 		}
 	})
 
@@ -560,7 +545,7 @@ func TestUserAgentBlackAndWhitelist(t *testing.T) {
 
 			res, err := http.DefaultClient.Do(req)
 			assert.NoError(t, err)
-			assert.Equal(t, 403, res.StatusCode)
+			assert.Equal(t, http.StatusForbidden, res.StatusCode)
 		}
 	})
 }
@@ -623,7 +608,7 @@ func TestRateLimitNotTriggeredOnWhitelistedPath(t *testing.T) {
 				defer wg.Done()
 				res, err := http.DefaultClient.Do(req)
 				assert.NoError(t, err)
-				assert.True(t, res.StatusCode != 429)
+				assert.True(t, res.StatusCode != http.StatusTooManyRequests)
 			}(&wg)
 		}
 		wg.Wait()
@@ -701,14 +686,14 @@ func TestRateLimit10PerSecond(t *testing.T) {
 				defer wg.Done()
 				res, err := http.DefaultClient.Do(req)
 				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
+				assert.Equal(t, http.StatusOK, res.StatusCode)
 			}(&wg)
 		}
 		wg.Wait()
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 429, res.StatusCode)
+		assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
 	})
 }
 
@@ -775,14 +760,14 @@ func TestRateLimit60PerMinute(t *testing.T) {
 				defer wg.Done()
 				res, err := http.DefaultClient.Do(req)
 				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
+				assert.Equal(t, http.StatusOK, res.StatusCode)
 			}(&wg)
 		}
 		wg.Wait()
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 429, res.StatusCode)
+		assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
 	})
 }
 
@@ -849,14 +834,14 @@ func TestRateLimit60PerHour(t *testing.T) {
 				defer wg.Done()
 				res, err := http.DefaultClient.Do(req)
 				assert.NoError(t, err)
-				assert.Equal(t, 200, res.StatusCode)
+				assert.Equal(t, http.StatusOK, res.StatusCode)
 			}(&wg)
 		}
 		wg.Wait()
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 429, res.StatusCode)
+		assert.Equal(t, http.StatusTooManyRequests, res.StatusCode)
 	})
 }
 
@@ -918,7 +903,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
 
 	t.Run("test if user agent block works with multiple ingresses (curl/7.64.2 should work)", func(t *testing.T) {
@@ -933,7 +918,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
 
 	t.Run("test if user agent block works with multiple ingresses (curl/7.66.3 should not work)", func(t *testing.T) {
@@ -948,7 +933,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 403, res.StatusCode)
+		assert.Equal(t, http.StatusForbidden, res.StatusCode)
 	})
 
 	t.Run("test if user agent works on ingress without the block annotation /foo (curl/7.64.1 should work)", func(t *testing.T) {
@@ -963,7 +948,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
 
 	t.Run("test if user agent works on ingress without the block annotation /foo/bar (curl/7.64.2 should work)", func(t *testing.T) {
@@ -978,7 +963,7 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
 
 	t.Run("test if user agent works on ingress without the block annotation /foo/bar/../bar/bar (curl/7.64.3 should work)", func(t *testing.T) {
@@ -993,27 +978,8 @@ func TestPathRoutingWithMultipleIngressesAndNamespaces(t *testing.T) {
 
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 	})
-}
-
-func TestSetLogLevel(t *testing.T) {
-	logLevel, ok := os.LookupEnv("LOG_LEVEL")
-	assert.False(t, ok)
-
-	_ = os.Setenv("LOG_LEVEL", "debug")
-	logLevel, _ = os.LookupEnv("LOG_LEVEL")
-	level, err := log.ParseLevel(logLevel)
-	assert.NoError(t, err)
-	log.SetLevel(level)
-	assert.Equal(t, log.GetLevel(), log.DebugLevel)
-
-	_ = os.Setenv("LOG_LEVEL", "info")
-	logLevel, _ = os.LookupEnv("LOG_LEVEL")
-	level, err = log.ParseLevel(logLevel)
-	assert.NoError(t, err)
-	log.SetLevel(level)
-	assert.Equal(t, log.GetLevel(), log.InfoLevel)
 }
 
 func TestProxyDirectorParams(t *testing.T) {
@@ -1059,9 +1025,9 @@ func TestProxyDirectorParams(t *testing.T) {
 		assert.NoError(t, err)
 		res, err := http.DefaultClient.Do(req)
 		assert.NoError(t, err)
-		assert.Equal(t, 200, res.StatusCode)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
 		bs, err := io.ReadAll(res.Body)
-		assert.Equal(t, mockServerResponse, string(bs))
+		assert.Equal(t, defaultRouteServerResponse, string(bs))
 		// host header is important for proxy director
 		assert.Equal(t, res.Header.Get("X-Requested-With-Host"), ingressExactPathMock.Spec.Rules[0].Host)
 	})
@@ -1115,6 +1081,269 @@ func TestHTTPToHTTPSRedirect(t *testing.T) {
 	assert.True(t, strings.ContainsAny("https://127.0.0.1", err.Error()))
 }
 
+func TestHTTPSRequestIPWhitelistSourceRange(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/whitelist-ip-source-range": "192.168.0.0/24,192.169.0.0/24",
+	}
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		_ = srv.Run(ctx)
+	}()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
+	waitForServer(ctx, reverseProxyConfig.Port)
+
+	t.Run("test if ip whitelist source range works", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, 401, res.StatusCode)
+	})
+}
+
+func TestHTTPSRequestIPWhitelistSourceRangeError(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
+
+	ingressExactPathMock := mocks.IngressExactPathTypeMock()
+	ingressExactPathMock.Spec.Rules[0].HTTP.Paths[0].Backend.Service.Port.Number = int32(mockServerConfig.Port)
+	ingressExactPathMock.Annotations = map[string]string{
+		"guardgress/whitelist-ip-source-range": "192.168.ABC.ABC/24",
+	}
+	ingressLimiter := limithandler.GetIngressLimiter(ingressExactPathMock)
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressExactPathMock,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{ingressLimiter},
+	}
+
+	go func() {
+		_ = srv.Run(ctx)
+	}()
+
+	go func() {
+		err := os.Setenv("HEALTH_METRICS_PORT", strconv.Itoa(freePort()))
+		assert.NoError(t, err)
+		err = healthmetrics.New().Run(ctx)
+		assert.NoError(t, err)
+	}()
+
+	waitForServer(ctx, reverseProxyConfig.Port)
+
+	t.Run("test if ip whitelist source range throws error with faulty annotation", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusInternalServerError, res.StatusCode)
+	})
+}
+
+func TestServerRoutingWithMultipleIngressPaths(t *testing.T) {
+	pathTypePrefix := v1.PathTypePrefix
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	mockServerConfig := &MockServerConfig{Host: "127.0.0.1.default.svc.cluster.local", Port: freePort()}
+	ctx := context.Background()
+
+	runMockServer(fmt.Sprintf("%s:%d", mockServerConfig.Host, mockServerConfig.Port), ctx)
+	srv := New(reverseProxyConfig)
+
+	ingressPathTypePrefix := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace:   "default",
+			Annotations: map[string]string{},
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "example.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path:     "/",
+									PathType: &pathTypePrefix,
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: int32(mockServerConfig.Port),
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+	ingressNoPathType := v1.Ingress{
+		TypeMeta: v12.TypeMeta{},
+		ObjectMeta: v12.ObjectMeta{
+			Namespace: "default",
+			Annotations: map[string]string{
+				"guardgress/user-agent-blacklist": "chrome101",
+			},
+		},
+		Spec: v1.IngressSpec{
+			IngressClassName: nil,
+			DefaultBackend:   nil,
+			TLS:              nil,
+			Rules: []v1.IngressRule{
+				{
+					Host: "example.guardgress.com",
+					IngressRuleValue: v1.IngressRuleValue{
+						HTTP: &v1.HTTPIngressRuleValue{
+							Paths: []v1.HTTPIngressPath{
+								{
+									Path: "/admin",
+									Backend: v1.IngressBackend{
+										Service: &v1.IngressServiceBackend{
+											Name: "127.0.0.1",
+											Port: v1.ServiceBackendPort{
+												Name:   "",
+												Number: int32(mockServerConfig.Port),
+											},
+										},
+										Resource: nil,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		Status: v1.IngressStatus{},
+	}
+
+	srv.RoutingTable = &router.RoutingTable{
+		Ingresses: &v1.IngressList{
+			TypeMeta: v12.TypeMeta{},
+			ListMeta: v12.ListMeta{},
+			Items: []v1.Ingress{
+				ingressPathTypePrefix,
+				ingressNoPathType,
+			},
+		},
+		TlsCertificates: mocks.TlsCertificatesMock(),
+		IngressLimiters: []*limiter.Limiter{limithandler.GetIngressLimiter(ingressNoPathType), limithandler.GetIngressLimiter(ingressPathTypePrefix)},
+	}
+
+	go func() {
+		_ = srv.Run(ctx)
+	}()
+
+	waitForServer(ctx, reverseProxyConfig.Port)
+
+	t.Run("test if exact path match gets selected at first /admin", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/admin", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+		err = res.Body.Close()
+		assert.NoError(t, err)
+		assert.Equal(t, adminRouteServerResponse, string(bs))
+	})
+
+	t.Run("test if path type prefix gets selected at last /", func(t *testing.T) {
+		// check if reverse proxy works for https request
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+		req, err := http.NewRequest(
+			"GET",
+			fmt.Sprintf("https://%s:%d/", reverseProxyConfig.Host, reverseProxyConfig.TlsPort),
+			nil,
+		)
+		assert.NoError(t, err)
+		req.Host = srv.RoutingTable.Ingresses.Items[0].Spec.Rules[0].Host
+
+		res, err := http.DefaultClient.Do(req)
+		assert.NoError(t, err)
+		assert.Equal(t, http.StatusOK, res.StatusCode)
+		bs, err := io.ReadAll(res.Body)
+		assert.NoError(t, err)
+		err = res.Body.Close()
+		assert.NoError(t, err)
+		assert.Equal(t, defaultRouteServerResponse, string(bs))
+	})
+}
+
 // This is the last test which tracks if the metrics are working
 func TestCustomPrometheusMetrics(t *testing.T) {
 	healthMetricsPort := freePort()
@@ -1132,7 +1361,7 @@ func TestCustomPrometheusMetrics(t *testing.T) {
 	// check if metrics are working
 	res, err := http.Get(fmt.Sprintf("http://0.0.0.0:%d/metrics", healthMetricsPort))
 	assert.NoError(t, err)
-	assert.Equal(t, 200, res.StatusCode)
+	assert.Equal(t, http.StatusOK, res.StatusCode)
 	bs, err := io.ReadAll(res.Body)
 	t.Log(string(bs))
 	assert.NoError(t, err)
@@ -1144,6 +1373,7 @@ func TestCustomPrometheusMetrics(t *testing.T) {
 		"concurrent_requests",
 		"rate_limit_blocks",
 		"user_agent_blocks",
+		"ip_forbidden_blocks",
 	}
 
 	for _, metric := range metricsWhichShouldBePresent {
@@ -1165,9 +1395,15 @@ func runMockServer(addr string, ctx context.Context) {
 				}
 			}
 
+			if strings.Contains(r.RequestURI, "/admin") {
+				_, _ = io.WriteString(w, adminRouteServerResponse)
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
 			// set for TestProxyDirectorParams Test
 			w.Header().Set("X-Requested-With-Host", r.Host)
-			_, _ = io.WriteString(w, mockServerResponse)
+			_, _ = io.WriteString(w, defaultRouteServerResponse)
 		}),
 	}
 
@@ -1182,6 +1418,25 @@ func runMockServer(addr string, ctx context.Context) {
 			log.Fatalf("Mock server error: %s", err)
 		}
 	}()
+}
+
+func TestSetLogLevel(t *testing.T) {
+	logLevel, ok := os.LookupEnv("LOG_LEVEL")
+	assert.False(t, ok)
+
+	_ = os.Setenv("LOG_LEVEL", "debug")
+	logLevel, _ = os.LookupEnv("LOG_LEVEL")
+	level, err := log.ParseLevel(logLevel)
+	assert.NoError(t, err)
+	log.SetLevel(level)
+	assert.Equal(t, log.GetLevel(), log.DebugLevel)
+
+	_ = os.Setenv("LOG_LEVEL", "info")
+	logLevel, _ = os.LookupEnv("LOG_LEVEL")
+	level, err = log.ParseLevel(logLevel)
+	assert.NoError(t, err)
+	log.SetLevel(level)
+	assert.Equal(t, log.GetLevel(), log.InfoLevel)
 }
 
 func waitForServer(ctx context.Context, port int) bool {
