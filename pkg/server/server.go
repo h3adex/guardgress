@@ -154,7 +154,8 @@ func (s Server) startHTTPSServer(ctx context.Context) error {
 	)
 
 	if err != nil {
-		log.Fatalf("Error on HTTPS server: %v", err)
+		log.Errorf("Error on HTTPS server: %v", err)
+		return err
 	}
 
 	return nil

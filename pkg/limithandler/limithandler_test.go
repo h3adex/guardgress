@@ -120,6 +120,10 @@ func TestGetIngressLimiter(t *testing.T) {
 		ingressExactPathMock.Annotations = map[string]string{}
 		ingressLimiter = GetIngressLimiter(ingressExactPathMock)
 		assert.Nil(t, ingressLimiter)
+		ingressExactPathMock = mocks.IngressExactPathTypeMock()
+		ingressExactPathMock.Annotations = nil
+		ingressLimiter = GetIngressLimiter(ingressExactPathMock)
+		assert.Nil(t, ingressLimiter)
 	})
 }
 
@@ -195,7 +199,7 @@ func TestRateLimitTriggeredRPM10(t *testing.T) {
 
 }
 
-func TestCreatingRedisClient(t *testing.T) {
+func TestGetRedisClient(t *testing.T) {
 	t.Run("test redis url does not start with redis://", func(t *testing.T) {
 		redisUrl := "foo://localhost:6379"
 		client, err := GetRedisClient(redisUrl)
@@ -206,6 +210,13 @@ func TestCreatingRedisClient(t *testing.T) {
 	t.Run("test redis url does start with redis://", func(t *testing.T) {
 		redisUrl := "redis://localhost:6379"
 		assert.True(t, strings.HasPrefix(redisUrl, "redis://"))
+	})
+
+	t.Run("test creating redis client with valid url", func(t *testing.T) {
+		redisUrl := "redis://localhost:6379"
+		client, err := GetRedisClient(redisUrl)
+		assert.NoError(t, err)
+		assert.NotNil(t, client)
 	})
 }
 

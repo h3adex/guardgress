@@ -183,7 +183,7 @@ func (w *Watcher) Run(ctx context.Context) error {
 // listIngresses returns a list of ingresses filtered by ingressClassName
 func listIngresses(client kubernetes.Interface) (*v1.IngressList, error) {
 	// List all ingresses
-	allIngresses, err := client.NetworkingV1().Ingresses("").List(context.TODO(), v12.ListOptions{})
+	allIngresses, err := client.NetworkingV1().Ingresses("").List(context.Background(), v12.ListOptions{})
 	if err != nil {
 		return nil, err
 	}

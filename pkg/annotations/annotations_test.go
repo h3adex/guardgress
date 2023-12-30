@@ -28,6 +28,20 @@ func TestIsIpWhitelisted(t *testing.T) {
 		}
 	})
 
+	t.Run("test ip whitelisting no annotation", func(t *testing.T) {
+		mockAnnotations := map[string]string{}
+
+		cases := map[string]bool{
+			"127.0.0.1":       false,
+			"127.0.0.2":       false,
+			"127.0.0.2_false": false,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsIpWhitelisted(mockAnnotations, key))
+		}
+	})
+
 	t.Run("test path whitelisting", func(t *testing.T) {
 		mockAnnotations := map[string]string{
 			"guardgress/limit-path-whitelist": "/shop/products/,/.well-known",
@@ -40,6 +54,18 @@ func TestIsIpWhitelisted(t *testing.T) {
 			"/.well-known":           true,
 			"/.well-known/foo":       true,
 			"/test/healthz":          false,
+		}
+
+		for key, val := range cases {
+			assert.Equal(t, val, IsPathWhiteListed(mockAnnotations, key))
+		}
+	})
+
+	t.Run("test path whitelisting no annotation", func(t *testing.T) {
+		mockAnnotations := map[string]string{}
+
+		cases := map[string]bool{
+			"/shop": false,
 		}
 
 		for key, val := range cases {
@@ -70,11 +96,24 @@ func TestTLSFingerprintWhiteBlacklistAnnotations(t *testing.T) {
 			"t13d1715h2_5b57614c22b0_93c746dc12af_should_work": true,
 		}
 
+		// test ja3 blacklisting
 		for key, val := range cases {
 			ok, _ := IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
 				Ja3:  key,
 				Ja3H: key,
 				Ja3n: key,
+				Ja4:  "",
+				Ja4h: "",
+			})
+			assert.Equal(t, val, ok)
+		}
+
+		// test ja4 blacklisting
+		for key, val := range cases {
+			ok, _ := IsTLSFingerprintAllowed(mockAnnotations, models.ParsedClientHello{
+				Ja3:  "",
+				Ja3H: "",
+				Ja3n: "",
 				Ja4:  key,
 				Ja4h: key,
 			})
@@ -298,5 +337,47 @@ func TestWhiteListIPSourceRangeAnnotations(t *testing.T) {
 			_, err := IsIpAllowed(mockAnnotations, key)
 			assert.Error(t, err)
 		}
+	})
+
+	t.Run("test whitelist ip source range no annotation set", func(t *testing.T) {
+		mockAnnotations := map[string]string{}
+
+		cases := map[string]bool{
+			"192.168.0.0": true,
+		}
+
+		for key := range cases {
+			allowed, err := IsIpAllowed(mockAnnotations, key)
+			assert.True(t, allowed)
+			assert.NoError(t, err)
+		}
+	})
+}
+
+func TestTlsFingerprintAnnotationExists(t *testing.T) {
+	t.Run("test tls fingerprint whitelist annotation exists", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/tls-fingerprint-whitelist": "d41d8cd98f00b204e9800998ecf8427a",
+		}
+		assert.True(t, TlsFingerprintAnnotationExists(mockAnnotations))
+	})
+
+	t.Run("test tls fingerprint whitelist annotation exists", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/tls-fingerprint-blacklist": "d41d8cd98f00b204e9800998ecf8427a",
+		}
+		assert.True(t, TlsFingerprintAnnotationExists(mockAnnotations))
+	})
+
+	t.Run("test add tls fingerprint header annotation exists", func(t *testing.T) {
+		mockAnnotations := map[string]string{
+			"guardgress/add-tls-fingerprint-header": "true",
+		}
+		assert.True(t, TlsFingerprintAnnotationExists(mockAnnotations))
+	})
+
+	t.Run("test tls fingerprint annotation does not exist", func(t *testing.T) {
+		mockAnnotations := map[string]string{}
+		assert.False(t, TlsFingerprintAnnotationExists(mockAnnotations))
 	})
 }

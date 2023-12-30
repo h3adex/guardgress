@@ -16,7 +16,7 @@ import (
 
 func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 	ingressAnnotations := ingress.Annotations
-	if ingressAnnotations == nil {
+	if ingressAnnotations == nil || len(ingressAnnotations) <= 0 {
 		return nil
 	}
 
@@ -29,7 +29,7 @@ func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 
 	rate, err := limiter.NewRateFromFormatted(limitPeriodAnnotation)
 	if err != nil {
-		log.Error("failed to parse rate: ", err.Error())
+		log.Error("failed to parse limiter rate: ", err.Error())
 		return nil
 	}
 
@@ -39,7 +39,8 @@ func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 
 	redisClient, err := GetRedisClient(limitRedisStoreAnnotation)
 	if err != nil {
-		log.Fatalln(err.Error())
+		log.Error("failed to create redis client: ", err.Error())
+		return nil
 	}
 
 	store, err := redisStore.NewStoreWithOptions(
@@ -48,7 +49,8 @@ func GetIngressLimiter(ingress v1.Ingress) *limiter.Limiter {
 	)
 
 	if err != nil {
-		log.Fatal("failed to create redis store: ", err.Error())
+		log.Error("failed to create redis store: ", err.Error())
+		return nil
 	}
 
 	return limiter.New(store, rate)

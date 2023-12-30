@@ -13,6 +13,7 @@ import (
 	"github.com/h3adex/guardgress/pkg/limithandler"
 	"github.com/h3adex/guardgress/pkg/mocks"
 	"github.com/h3adex/guardgress/pkg/router"
+	"github.com/h3adex/guardgress/pkg/watcher"
 	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/ulule/limiter/v3"
@@ -160,6 +161,32 @@ func TestHTTPSRequest(t *testing.T) {
 		err = res.Body.Close()
 		assert.NoError(t, err)
 		assert.Equal(t, defaultRouteServerResponse, string(bs))
+	})
+}
+
+func TestUpdatingRoutingTable(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+
+	t.Run("test if routing table is getting updated", func(t *testing.T) {
+		srv := New(reverseProxyConfig)
+		srv.UpdateRoutingTable(watcher.Payload{
+			Ingresses:       nil,
+			TlsCertificates: nil,
+			IngressLimiters: make([]*limiter.Limiter, 3),
+		})
+		assert.True(t, len(srv.RoutingTable.IngressLimiters) == 3)
+	})
+}
+
+func TestInvalidServerConfig(t *testing.T) {
+	reverseProxyConfig := &Config{Host: "127.0.0.1", Port: freePort(), TlsPort: freePort()}
+	ctx := context.Background()
+
+	t.Run("test if server fails if invalid host is provided", func(t *testing.T) {
+		reverseProxyConfig.Host = "invalid-host"
+		srv := New(reverseProxyConfig)
+		err := srv.Run(ctx)
+		assert.Error(t, err)
 	})
 }
 
