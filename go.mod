@@ -14,6 +14,7 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/ulule/limiter/v3 v3.11.2
+	github.com/yl2chen/cidranger v1.0.2
 	golang.org/x/sync v0.5.0
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
@@ -90,7 +91,6 @@ require (
 	github.com/tidwall/pretty v1.2.1 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/ugorji/go/codec v1.2.12 // indirect
-	github.com/yl2chen/cidranger v1.0.2 // indirect
 	github.com/zeebo/blake3 v0.2.3 // indirect
 	go.mongodb.org/mongo-driver v1.13.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
