@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/ulule/limiter/v3 v3.11.2
 	github.com/yl2chen/cidranger v1.0.2
-	golang.org/x/sync v0.5.0
+	golang.org/x/sync v0.6.0
 	k8s.io/api v0.29.0
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v0.29.0
