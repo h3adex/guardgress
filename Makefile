@@ -1,4 +1,4 @@
-K8S_VERSION ?= v1.29.0
+K8S_VERSION ?= v1.29.1
 TAG ?= 1.0.0-dev
 DEV_IMAGE ?= guardgress:${TAG}
 DEV_CLUSTER ?= guardgress-dev-cluster
