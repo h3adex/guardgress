@@ -3,7 +3,7 @@
 ![Vulnerability Scan](https://github.com/h3adex/guardgress/actions/workflows/vulnerability-scan.yaml/badge.svg)
 ![Docker](https://github.com/h3adex/guardgress/actions/workflows/publish-to-docker.yaml/badge.svg)
 ![Go Report Card](https://goreportcard.com/badge/github.com/h3adex/guardgress)
-![Go Version](https://img.shields.io/badge/go-1.21.6-blue)
+![Go Version](https://img.shields.io/badge/go-1.22.0-blue)
 
 Guardgress showcases a Web Application Firewall (WAF) integration within 
 a Kubernetes Ingress Controller.
@@ -97,11 +97,6 @@ please refer to the [metrics](docs/existing-metrics.md) documentation.
   configuration information instead of relying solely on annotations.
   Presently, certain annotations, particularly those containing commas,
   aren't parsed accurately for user-agent configurations.
-
-## Ideas
-Don't hesitate to open an issue or pull request with your suggestions or ideas
-- [ ] Proxy Connection Identification: Implement a method described in [this paper](https://dl.acm.org/doi/abs/10.1007/978-3-031-21280-2_18)
-to identify connections through proxies.
 
 ## License
 This project operates under the MIT License. Refer to the [LICENSE](LICENSE) file for details.
