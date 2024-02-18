@@ -2,6 +2,17 @@ apiVersion: v1
 entries:
   guardgress-ingress-controller:
   - apiVersion: v2
+    appVersion: 1.0.5-beta
+    created: "2024-02-18T18:12:53.81881525Z"
+    description: Guardgress showcases a Web Application Firewall (WAF) integration
+      within a Kubernetes Ingress Controller.
+    digest: 5f32e3f455f81c20707081fad594021fcbc6122c31e6b961d7b0a361ca0bb4cd
+    name: guardgress-ingress-controller
+    type: application
+    urls:
+    - https://github.com/h3adex/guardgress/releases/download/guardgress-ingress-controller-helm-1.0.5/guardgress-ingress-controller-1.0.5.tgz
+    version: 1.0.5
+  - apiVersion: v2
     appVersion: 1.0.4-beta
     created: "2024-02-05T10:28:32.73284015Z"
     description: Guardgress showcases a Web Application Firewall (WAF) integration
@@ -56,4 +67,4 @@ entries:
     urls:
     - https://github.com/h3adex/guardgress/releases/download/guardgress-ingress-controller-helm-1.0.0/guardgress-ingress-controller-1.0.0.tgz
     version: 1.0.0
-generated: "2024-02-05T10:28:32.732862722Z"
+generated: "2024-02-18T18:12:53.818839114Z"
