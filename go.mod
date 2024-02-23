@@ -10,7 +10,7 @@ require (
 	github.com/gospider007/requests v0.0.0-20240114073218-833dc2c82f64
 	github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3
 	github.com/prometheus/client_golang v1.18.0
-	github.com/redis/go-redis/v9 v9.5.0
+	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.8.4
 	github.com/ulule/limiter/v3 v3.11.2
