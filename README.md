@@ -8,6 +8,9 @@
 Guardgress showcases a Web Application Firewall (WAF) integration within 
 a Kubernetes Ingress Controller.
 
+> [!CAUTION]
+> This project is a Proof of Concept and is not recommended for production use.
+
 ## Features
 - [x] User-Agent Filtering: Blacklist/Whitelist with strings or regular expressions.
 - [x] TLS Fingerprint Filtering: Whitelist/Blacklist requests based on ``Ja3, Ja3-Hash, Ja3n, Ja4, Ja4h`` fingerprints.
