@@ -113,6 +113,8 @@ github.com/gospider007/websocket v0.0.0-20240104034652-af938aeed446 h1:JmTBH/ow7
 github.com/gospider007/websocket v0.0.0-20240104034652-af938aeed446/go.mod h1:yFlXngTH3Vh3LMNGpYCaK41Ruv+zEScL9zZ2AmhzBbo=
 github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3 h1:rGUjx1LV8EtTCKt0PuUJVuNg40uoo2dBrk4nXGQk5qI=
 github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3/go.mod h1:4h46XHbROFjXvKpPZ1UtbEX1w/u39adSpWFH6IhmqJ8=
+github.com/h3adex/fp v0.0.0-20240218180449-a4684620a152 h1:C49eGMQ+rPXz0i29hxyH4TTrKwL7bUDkQ1kYDM3bAAM=
+github.com/h3adex/fp v0.0.0-20240218180449-a4684620a152/go.mod h1:arPFjX+b+0Qb6a3uF5bmS+K9tpndd1J0FbjbFQQidUQ=
 github.com/imdario/mergo v0.3.6 h1:xTNEAn+kxVO7dTZGu0CegyqKZmoWFI0rF8UxjlB2d28=
 github.com/imdario/mergo v0.3.6/go.mod h1:2EnlNZ0deacrJVfApfmtdGgDfMuh/nq6Ok1EcJh5FfA=
 github.com/josharian/intern v1.0.0 h1:vlS4z54oSdjm0bgjRigI+G1HpF+tI+9rE5LLzOg8HmY=

@@ -59,7 +59,7 @@ spec:
     spec:
       serviceAccountName: guardgress-sa
       containers:
-      - image: ghcr.io/h3adex/guardgress:1.0.5-beta
+      - image: ghcr.io/h3adex/guardgress:1.0.7-beta
         name: guardgress
         env:
         - name: PORT
