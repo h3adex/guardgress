@@ -92,7 +92,32 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "https"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -197,7 +222,7 @@
               "options": {
                 "mode": "exclude",
                 "names": [
-                  "https 200"
+                  "https 404"
                 ],
                 "prefix": "All except:",
                 "readOnly": true
@@ -303,6 +328,10 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
               }
             ]
           }
@@ -315,7 +344,198 @@
         "x": 0,
         "y": 9
       },
-      "id": 6,
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(ip_forbidden_blocks{protocol=~\"$protocol\", host=~\"$host\"}) by (endpoint)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "IP Forbidden Blocks Rate Max (All Lines)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            }
+          },
+          "mappings": []
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 9
+      },
+      "id": 18,
+      "options": {
+        "displayLabels": [
+          "percent"
+        ],
+        "legend": {
+          "calcs": [],
+          "displayMode": "hidden",
+          "placement": "right",
+          "showLegend": false,
+          "values": []
+        },
+        "pieType": "pie",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(ip_forbidden_blocks{protocol=~\"$protocol\", host=~\"$host\"}) by (endpoint)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "__auto",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "IP Forbidden Blocks Rate Max (Chart)",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "/wp-admin/admin-ajax.php?action=vtprd_product_search_ajax&term=aaa%27+union+select+1,sleep(6),3--+-"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 17
+      },
+      "id": 17,
       "options": {
         "legend": {
           "calcs": [],
@@ -336,16 +556,16 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(rate_limit_blocks[$interval])) by (endpoint, protocol)",
+          "expr": "sum(increase(ip_forbidden_blocks{protocol=~\"$protocol\", host=~\"$host\"}[$interval])) by (endpoint)",
           "format": "time_series",
           "instant": false,
           "interval": "",
-          "legendFormat": "{{endpoint}} {{protocol}}",
+          "legendFormat": "__auto",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "Rate Limit Blocks Rate by Endpoint, Protocol",
+      "title": "IP Forbidden Blocks Rate Increase",
       "type": "timeseries"
     },
     {
@@ -402,13 +622,38 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "Concurrent Requests Rate [15m]"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 9
+        "y": 17
       },
       "id": 4,
       "options": {
@@ -495,134 +740,15 @@
             ]
           }
         },
-        "overrides": [
-          {
-            "__systemRef": "hideSeriesFrom",
-            "matcher": {
-              "id": "byNames",
-              "options": {
-                "mode": "exclude",
-                "names": [
-                  "t13i191000_702199bc00d8_87c99aad25bb https"
-                ],
-                "prefix": "All except:",
-                "readOnly": true
-              }
-            },
-            "properties": [
-              {
-                "id": "custom.hideFrom",
-                "value": {
-                  "legend": false,
-                  "tooltip": false,
-                  "viz": true
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 17
-      },
-      "id": 13,
-      "options": {
-        "legend": {
-          "calcs": [],
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "single",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "PBFA97CFB590B2093"
-          },
-          "editorMode": "code",
-          "exemplar": false,
-          "expr": "sum(rate(tls_fingerprint_blocks[$interval])) by (fingerprint, protocol)",
-          "format": "time_series",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "{{ fingerprint }} {{ protocol }}",
-          "range": true,
-          "refId": "A"
-        }
-      ],
-      "title": "TLS Fingerpint Blocks Rate by Protocol, Fingerprint",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "PBFA97CFB590B2093"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisBorderShow": false,
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 0,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "insertNulls": false,
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "auto",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          }
-        },
         "overrides": []
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 17
+        "x": 0,
+        "y": 25
       },
-      "id": 14,
+      "id": 6,
       "options": {
         "legend": {
           "calcs": [],
@@ -643,16 +769,16 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(ip_forbidden_blocks[$interval])) by (protocol)",
+          "expr": "max(rate_limit_blocks{protocol=~\"$protocol\", host=~\"$host\"}) by (endpoint)",
           "format": "time_series",
           "instant": false,
           "interval": "",
-          "legendFormat": "__auto",
+          "legendFormat": "{{endpoint}} {{protocol}}",
           "range": true,
           "refId": "A"
         }
       ],
-      "title": "IP Forbidden Blocks Rate by Protocol",
+      "title": "Rate Limit Blocks Max",
       "type": "timeseries"
     },
     {
@@ -737,7 +863,7 @@
           },
           "editorMode": "code",
           "exemplar": false,
-          "expr": "sum(rate(user_agent_blocks[$interval])) by (user_agent, protocol)",
+          "expr": "max(user_agent_blocks{protocol=~\"$protocol\", host=~\"$host\"}) by (endpoint)",
           "format": "time_series",
           "instant": false,
           "interval": "",
@@ -746,7 +872,126 @@
           "refId": "A"
         }
       ],
-      "title": "User Agent Blocks Rate by User Agent, Protocol",
+      "title": "User Agent Blocks Max",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "PBFA97CFB590B2093"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisBorderShow": false,
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 0,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "insertNulls": false,
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "auto",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "__systemRef": "hideSeriesFrom",
+            "matcher": {
+              "id": "byNames",
+              "options": {
+                "mode": "exclude",
+                "names": [
+                  "t13i191000_702199bc00d8_87c99aad25bb https"
+                ],
+                "prefix": "All except:",
+                "readOnly": true
+              }
+            },
+            "properties": [
+              {
+                "id": "custom.hideFrom",
+                "value": {
+                  "legend": false,
+                  "tooltip": false,
+                  "viz": true
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 33
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "PBFA97CFB590B2093"
+          },
+          "editorMode": "code",
+          "exemplar": false,
+          "expr": "max(tls_fingerprint_blocks{protocol=~\"$protocol\", host=~\"$host\"}) by (endpoint)",
+          "format": "time_series",
+          "instant": false,
+          "interval": "",
+          "legendFormat": "{{ fingerprint }} {{ protocol }}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "TLS Fingerpint Blocks Max",
       "type": "timeseries"
     },
     {
@@ -755,7 +1000,7 @@
         "h": 1,
         "w": 24,
         "x": 0,
-        "y": 33
+        "y": 41
       },
       "id": 16,
       "panels": [
@@ -774,8 +1019,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -841,8 +1085,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -908,8 +1151,7 @@
                 "mode": "absolute",
                 "steps": [
                   {
-                    "color": "green",
-                    "value": null
+                    "color": "green"
                   },
                   {
                     "color": "red",
@@ -973,8 +1215,8 @@
       {
         "current": {
           "selected": true,
-          "text": "15m",
-          "value": "15m"
+          "text": "6h",
+          "value": "6h"
         },
         "hide": 0,
         "includeAll": false,
@@ -988,7 +1230,7 @@
             "value": "5m"
           },
           {
-            "selected": true,
+            "selected": false,
             "text": "15m",
             "value": "15m"
           },
@@ -1003,7 +1245,7 @@
             "value": "1h"
           },
           {
-            "selected": false,
+            "selected": true,
             "text": "6h",
             "value": "6h"
           },
@@ -1022,17 +1264,78 @@
         "queryValue": "",
         "skipUrlSync": false,
         "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "app1.example.domain.com",
+          "value": "app1.example.domain.com"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Host",
+        "multi": false,
+        "name": "host",
+        "options": [
+          {
+            "selected": false,
+            "text": "app2.example.domain.com",
+            "value": "app2.example.domain.com"
+          },
+          {
+            "selected": false,
+            "text": "app3.example.domain.com",
+            "value": "app3.example.domain.com"
+          },
+          {
+            "selected": true,
+            "text": "app1.example.domain.com",
+            "value": "app1.example.domain.com"
+          }
+        ],
+        "query": "app2.example.domain.com,app3.example.domain.com,app1.example.domain.com",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
+      },
+      {
+        "current": {
+          "selected": true,
+          "text": "https",
+          "value": "https"
+        },
+        "hide": 0,
+        "includeAll": false,
+        "label": "Protocol",
+        "multi": false,
+        "name": "protocol",
+        "options": [
+          {
+            "selected": false,
+            "text": "http",
+            "value": "http"
+          },
+          {
+            "selected": true,
+            "text": "https",
+            "value": "https"
+          }
+        ],
+        "query": "http,https",
+        "queryValue": "",
+        "skipUrlSync": false,
+        "type": "custom"
       }
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-1h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "Guardgress Dashboard",
   "uid": "bcfe8ae7-b4d3-48dd-af43-aa4b508b1d58",
-  "version": 5,
+  "version": 11,
   "weekStart": ""
 }

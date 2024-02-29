@@ -62,22 +62,22 @@ var (
 	rateLimitBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "rate_limit_blocks",
 		Help: "Number of requests blocked due to rate limiting",
-	}, []string{"protocol", "endpoint"})
+	}, []string{"protocol", "endpoint", "host"})
 
 	ipForbiddenBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ip_forbidden_blocks",
 		Help: "Number of requests blocked due to ip blocks",
-	}, []string{"protocol"})
+	}, []string{"protocol", "endpoint", "host"})
 
 	tlsFingerprintBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "tls_fingerprint_blocks",
 		Help: "Number of requests blocked due to TLS fingerprinting",
-	}, []string{"protocol", "fingerprint"})
+	}, []string{"protocol", "fingerprint", "host"})
 
 	userAgentBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "user_agent_blocks",
 		Help: "Number of requests blocked due to user agent",
-	}, []string{"protocol", "user_agent"})
+	}, []string{"protocol", "user_agent", "host"})
 )
 
 type Config struct {
@@ -177,16 +177,16 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 
 		switch errorIdentifier {
 		case RateLimitedErrorIdentifier:
-			rateLimitBlocks.WithLabelValues(protocol, c.Request.RequestURI).Inc()
+			rateLimitBlocks.WithLabelValues(protocol, c.Request.RequestURI, c.Request.Host).Inc()
 		case UserAgentForbiddenIdentifier:
-			userAgentBlocks.WithLabelValues(protocol, c.Request.UserAgent()).Inc()
+			userAgentBlocks.WithLabelValues(protocol, c.Request.UserAgent(), c.Request.Host).Inc()
 		case TlsFingerprintForbiddenIdentifier:
 			fingerprint, ok := c.Value("fingerprint").(string)
 			if ok {
-				tlsFingerprintBlocks.WithLabelValues(protocol, fingerprint).Inc()
+				tlsFingerprintBlocks.WithLabelValues(protocol, fingerprint, c.Request.Host).Inc()
 			}
 		case IPForbiddenIdentifier:
-			ipForbiddenBlocks.WithLabelValues(protocol).Inc()
+			ipForbiddenBlocks.WithLabelValues(protocol, c.Request.RequestURI, c.Request.Host).Inc()
 		default:
 			// NoErrorIdentifier, InternalErrorIdentifier:
 			return
