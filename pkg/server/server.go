@@ -67,7 +67,7 @@ var (
 	ipForbiddenBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "ip_forbidden_blocks",
 		Help: "Number of requests blocked due to ip blocks",
-	}, []string{"protocol"})
+	}, []string{"protocol", "endpoint"})
 
 	tlsFingerprintBlocks = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "tls_fingerprint_blocks",
@@ -186,7 +186,7 @@ func (s Server) setupRouter(protocol string) *gin.Engine {
 				tlsFingerprintBlocks.WithLabelValues(protocol, fingerprint).Inc()
 			}
 		case IPForbiddenIdentifier:
-			ipForbiddenBlocks.WithLabelValues(protocol).Inc()
+			ipForbiddenBlocks.WithLabelValues(protocol, c.Request.RequestURI).Inc()
 		default:
 			// NoErrorIdentifier, InternalErrorIdentifier:
 			return
