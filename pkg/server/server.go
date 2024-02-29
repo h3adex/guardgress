@@ -208,7 +208,6 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 	// Retrieve the backend service URL, annotations, and check for any routing errors.
 	// This includes validating if the request can be serviced by a backend and if it adheres to rate limits.
 	svcURL, parsedAnnotations, routingError := s.RoutingTable.GetBackend(host, requestURI, clientIP)
-	log.Debugf("Parsed annotations: %+v", parsedAnnotations)
 
 	// Handle any routing errors, sending appropriate HTTP responses and logging the issues.
 	if routingError.Error != nil {
@@ -242,12 +241,10 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 
 	// Deny access if the client IP is not authorized.
 	if !ipIsAllowed {
-		log.Debugf("IP not allowed: %s", clientIP)
 		ctx.Writer.WriteHeader(http.StatusUnauthorized)
 		_, _ = ctx.Writer.Write([]byte(ForbiddenErrorResponse))
 		return IPForbiddenIdentifier
 	}
-	log.Debugf("IP is allowed: %s", clientIP)
 
 	// Validate TLS fingerprint if the connection is HTTPS and the corresponding annotation exists.
 	if isHTTPS && annotations.TlsFingerprintAnnotationExists(parsedAnnotations) {
@@ -276,7 +273,7 @@ func (s Server) proxyRequest(ctx *gin.Context, isHTTPS bool) int {
 	}
 
 	// Finally, forward the validated request to the backend service.
-	s.proxyToBackend(ctx, svcURL, host)
+	s.proxyToBackend(ctx, svcURL)
 
 	return NoErrorIdentifier
 }
@@ -286,7 +283,6 @@ func (s Server) parseClientHello(ctx *gin.Context, parsedAnnotations map[string]
 	if err != nil {
 		return models.ParsedClientHello{}, fmt.Errorf("unable to parse client hello: %w", err)
 	}
-	log.Debugf("ParsedClientHello: %+v", parsedClientHello)
 
 	if annotations.IsTLSFingerprintHeaderRequested(parsedAnnotations) {
 		addTLSFingerprintHeaders(ctx, parsedClientHello)
@@ -295,16 +291,32 @@ func (s Server) parseClientHello(ctx *gin.Context, parsedAnnotations map[string]
 	return parsedClientHello, nil
 }
 
-func (s Server) proxyToBackend(ctx *gin.Context, svcURL *url.URL, host string) {
-	log.Debugf("Proxying request to backend service: %s", svcURL)
-	proxy := httputil.NewSingleHostReverseProxy(svcURL)
-	proxy.Director = func(req *http.Request) {
-		req.Header = ctx.Request.Header
-		req.Host = host
-		req.URL.Scheme = svcURL.Scheme
-		req.URL.Host = svcURL.Host
-		req.URL.Path = svcURL.Path
+func (s Server) proxyToBackend(ctx *gin.Context, svcURL *url.URL) {
+	log.Debugf("Proxying request to backend service %s with path %s", svcURL.Host, ctx.Request.URL.Path)
+
+	proxyUrl := &url.URL{
+		Host:     svcURL.Host,
+		Scheme:   svcURL.Scheme,
+		RawPath:  ctx.Request.URL.RawPath,
+		RawQuery: ctx.Request.URL.RawQuery,
+		Path:     ctx.Request.URL.Path,
 	}
+
+	proxy := httputil.NewSingleHostReverseProxy(proxyUrl)
+
+	proxy.Director = func(req *http.Request) {
+		req.URL.Host = svcURL.Host
+		req.URL.Scheme = "http"
+
+		req.Host = ctx.Request.Host
+		req.URL.Path = ctx.Request.URL.Path
+		req.URL.RawQuery = ctx.Request.URL.RawQuery
+		req.Proto = ctx.Request.Proto
+
+		// TODO: https requests
+		req.Header.Set("X-Forwarded-Proto", "https")
+	}
+
 	proxy.ServeHTTP(ctx.Writer, ctx.Request)
 }
 
