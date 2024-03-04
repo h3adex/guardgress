@@ -111,8 +111,6 @@ github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198 h1:phk1GNobIIQWL
 github.com/gospider007/tools v0.0.0-20231202084937-8b2bc66f8198/go.mod h1:wiILK6EotceHz/Rnb6ux8PzY3sr5OV+mYuIcbtxpkYI=
 github.com/gospider007/websocket v0.0.0-20240104034652-af938aeed446 h1:JmTBH/ow7RAxM+dW3XuV3GOEnnP10s9wX6lDzN+6NtE=
 github.com/gospider007/websocket v0.0.0-20240104034652-af938aeed446/go.mod h1:yFlXngTH3Vh3LMNGpYCaK41Ruv+zEScL9zZ2AmhzBbo=
-github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3 h1:rGUjx1LV8EtTCKt0PuUJVuNg40uoo2dBrk4nXGQk5qI=
-github.com/h3adex/fp v0.0.0-20231218090125-74b9cad595b3/go.mod h1:4h46XHbROFjXvKpPZ1UtbEX1w/u39adSpWFH6IhmqJ8=
 github.com/h3adex/fp v0.0.0-20240218180449-a4684620a152 h1:C49eGMQ+rPXz0i29hxyH4TTrKwL7bUDkQ1kYDM3bAAM=
 github.com/h3adex/fp v0.0.0-20240218180449-a4684620a152/go.mod h1:arPFjX+b+0Qb6a3uF5bmS+K9tpndd1J0FbjbFQQidUQ=
 github.com/imdario/mergo v0.3.6 h1:xTNEAn+kxVO7dTZGu0CegyqKZmoWFI0rF8UxjlB2d28=
@@ -195,8 +193,9 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/stretchr/testify v1.8.4 h1:CcVxjf3Q8PM0mHUKJCdn+eZZtm5yQwehR5yeSVQQcUk=
 github.com/stretchr/testify v1.8.4/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
+github.com/stretchr/testify v1.9.0 h1:HtqpIVDClZ4nwg75+f6Lvsy/wHu+3BoSGCbBAcpTsTg=
+github.com/stretchr/testify v1.9.0/go.mod h1:r2ic/lqez/lEtzL7wO/rwa5dbSLXVDPFyf8C91i36aY=
 github.com/tidwall/gjson v1.17.1 h1:wlYEnwqAHgzmhNUFfw7Xalt2JzQvsMx2Se4PcoFCT/U=
 github.com/tidwall/gjson v1.17.1/go.mod h1:/wbyibRr2FHMks5tjHJ5F8dMZh3AcwJEMf5vlfC0lxk=
 github.com/tidwall/match v1.1.1 h1:+Ho715JplO36QYgwN9PGYNhgZvoUSc9X2c80KVTi+GA=

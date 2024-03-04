@@ -12,7 +12,7 @@ require (
 	github.com/prometheus/client_golang v1.19.0
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/ulule/limiter/v3 v3.11.2
 	github.com/yl2chen/cidranger v1.0.2
 	golang.org/x/sync v0.6.0
