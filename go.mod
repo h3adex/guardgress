@@ -9,7 +9,7 @@ require (
 	github.com/gospider007/ja3 v0.0.0-20240114072950-a58a93a771b9
 	github.com/gospider007/requests v0.0.0-20240114073218-833dc2c82f64
 	github.com/h3adex/fp v0.0.0-20240218180449-a4684620a152
-	github.com/prometheus/client_golang v1.19.0
+	github.com/prometheus/client_golang v1.19.1
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/sirupsen/logrus v1.9.3
 	github.com/stretchr/testify v1.9.0
