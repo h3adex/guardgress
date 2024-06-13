@@ -16,8 +16,8 @@ require (
 	github.com/ulule/limiter/v3 v3.11.2
 	github.com/yl2chen/cidranger v1.0.2
 	golang.org/x/sync v0.7.0
-	k8s.io/api v0.30.1
-	k8s.io/apimachinery v0.30.1
+	k8s.io/api v0.30.2
+	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v0.30.1
 )
 
